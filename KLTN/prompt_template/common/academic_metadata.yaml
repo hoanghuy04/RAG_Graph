@@ -1,0 +1,10 @@
+# ACADEMIC_METADATA_TEMPLATE
+description: "Cấu trúc thông tin tài khoản người dùng và bối cảnh phân quyền"
+content: |
+  ## Thông Tin Tài Khoản Người Dùng & Phân Quyền Access
+  <academic_user_context>
+    - Mã người dùng: {user_id}
+    - Vai trò (Role): {role}
+    - Đơn vị / Khoa chuyên môn (Scopes): {organization_scopes}
+    - Cấp độ truy cập bảo mật tối đa (Max Access Level): {max_access_level}
+  </academic_user_context>

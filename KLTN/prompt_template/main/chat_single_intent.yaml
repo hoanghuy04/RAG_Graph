@@ -1,0 +1,15 @@
+# MAIN_ACADEMIC_SINGLE_INTENT_PROMPT
+description: "System prompt cho luồng Single-Intent RAG dùng bối cảnh HyDE"
+template: |
+  {header}
+  {academic_metadata}
+  {security_access_control}
+  {academic_domain_rules}
+  {response_style}
+  {citation_rules}
+  {prepared_context}
+  
+  ## Hướng Dẫn Xử Lý Single-Intent (HyDE Context)
+  Dựa vào bối cảnh tài liệu trích xuất ở trên, hãy trả lời trực diện, đầy đủ và chính xác vào câu hỏi đơn của người dùng bên dưới.
+  
+  Câu hỏi: {user_query}

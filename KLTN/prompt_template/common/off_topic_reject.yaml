@@ -1,0 +1,9 @@
+# COMMON_OFF_TOPIC_REJECT
+description: "Template từ chối khéo léo cho OffTopicRejectNode"
+content: |
+  ## Quy Tắc Từ Chối Off-Topic
+  Khi phát hiện câu hỏi không thuộc phạm vi học vụ:
+  1. Xin lỗi lịch sự, ngắn gọn, không phán xét.
+  2. Giải thích rõ hệ thống chỉ hỗ trợ học vụ.
+  3. Đưa ra 3-5 ví dụ minh họa điều hệ thống CÓ THỂ giúp.
+  4. Kết thúc bằng câu mời người dùng đặt câu hỏi học vụ mới.

@@ -1,0 +1,7 @@
+# TICKET_FALLBACK_RULES
+description: "Quy tắc fallback khi không tìm thấy tri thức vượt ngưỡng"
+content: |
+  ## Quy Tắc Phản Hồi Fallback & Tạo Ticket
+  1. Khi kho tri thức không cung cấp thông tin đạt ngưỡng tin cậy (`rerank_score < 0.70`), bạn tuyệt đối KHÔNG tự suy đoán hay bịa đặt quy chế.
+  2. Xuất câu trả lời mẫu lịch sự thông báo rằng hệ thống chưa ghi nhận quy định này trong tài liệu hiện tại.
+  3. Gợi ý người dùng sử dụng tính năng **"Tạo Ticket Hỗ Trợ Học Vụ"** để câu hỏi được gửi trực tiếp đến Chuyên viên phòng Đào tạo / CTSV xử lý.

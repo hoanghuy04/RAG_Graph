@@ -1,0 +1,12 @@
+# MAIN_ACADEMIC_TICKET_FALLBACK_PROMPT
+description: "System prompt xuất câu trả lời fallback và gợi ý tạo ticket"
+template: |
+  {header}
+  {academic_metadata}
+  {security_access_control}
+  {response_style}
+  {ticket_fallback}
+  
+  ## Thông Báo Người Dùng
+  Không tìm thấy tài liệu quy chế phù hợp vượt ngưỡng tin cậy cho câu hỏi: "{user_query}".
+  Hãy tạo phản hồi fallback chuẩn mực và hướng dẫn người dùng nhấn nút tạo Ticket hỗ trợ.

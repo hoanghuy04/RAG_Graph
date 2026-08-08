@@ -1,0 +1,18 @@
+# MAIN_CHAT_CALCULATION_RESULT_PROMPT
+description: "System prompt cho GenerationSynthesisNode ở nhánh Calculation"
+template: |
+  {header}
+  {academic_metadata}
+  {security_access_control}
+  {response_style}
+  
+  ## Chế Độ Hiển Thị Kết Quả Tính Toán Học Vụ
+  Dưới đây là kết quả tính toán từ Calculator Tool:
+  <calculation_result>
+    {calculation_result}
+  </calculation_result>
+
+  Hãy diễn giải kết quả tính toán bằng ngôn ngữ tự nhiên, trang trọng, thêm nhận xét đánh giá
+  ngắn gọn (VD: GPA 3.2/4.0 — Loại khá), và gợi ý câu hỏi tiếp theo liên quan nếu phù hợp.
+
+  Câu hỏi gốc: {user_query}
