@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Refactor — Intent Handler Fan-out / Hội tụ</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #faf9f7; --surface: #ffffff; --surface-line: #ece7e2;
+    --ink: #33291f; --ink-muted: #71645a; --ink-faint: #a59a8e;
+    --line: #e7e1da; --code-bg: #f4f0eb;
+    --accent: #bb7c5f; --accent-ink: #78493a; --accent-tint: #f7f0ea; --accent-tint-line: #e2cebd;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 840px; margin: 0 auto; padding: 3rem 1.5rem 5rem; display: flex; flex-direction: column; gap: 2.5rem; }
+  .eyebrow { font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace; font-size: 0.76rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: 1.75rem; line-height: 1.25; margin: 0.3rem 0 0.5rem; font-weight: 650; letter-spacing: -0.01em; }
+  .subtitle { color: var(--ink-muted); font-size: 1rem; max-width: 66ch; }
+  header.masthead { padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+  .meta-row { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--ink-faint); margin-top: 0.6rem; font-family: ui-monospace, monospace; }
+  .status-badge { display: inline-block; font-size: 0.76rem; font-weight: 600; color: var(--accent-ink); background: var(--accent-tint); border: 1px solid var(--accent-tint-line); padding: 0.15rem 0.55rem; border-radius: 4px; margin-top: 0.6rem; font-family: ui-monospace, monospace; }
+  h2 { font-size: 1.15rem; font-weight: 650; margin: 0 0 0.8rem; display: flex; align-items: baseline; gap: 0.6rem; }
+  h2 .num { font-family: ui-monospace, monospace; font-size: 0.8rem; color: var(--accent); font-weight: 700; }
+  h3 { font-size: 0.98rem; font-weight: 650; margin: 0 0 0.4rem; }
+  section { display: flex; flex-direction: column; gap: 0.9rem; }
+  p { margin: 0; max-width: 72ch; }
+  p + p { margin-top: 0.55rem; }
+  code, .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace; font-size: 0.87em; }
+  code { background: var(--code-bg); padding: 0.12em 0.4em; border-radius: 3px; }
+  pre.code-block { background: var(--code-bg); border: 1px solid var(--surface-line); border-radius: 6px; padding: 1rem 1.1rem; overflow-x: auto; font-family: ui-monospace, monospace; font-size: 0.8rem; line-height: 1.55; margin: 0; }
+  pre.code-block code { background: none; padding: 0; }
+  blockquote { margin: 0; padding: 0.8rem 1.1rem; border-left: 3px solid var(--accent); background: var(--accent-tint); color: var(--ink); font-size: 0.93rem; }
+  blockquote cite { display: block; margin-top: 0.4rem; font-style: normal; font-size: 0.76rem; color: var(--ink-faint); }
+  .callout { border-left: 3px solid var(--accent-tint-line); background: var(--accent-tint); padding: 0.9rem 1.1rem; font-size: 0.92rem; color: var(--ink-muted); }
+  .callout b { color: var(--accent-ink); }
+
+  .mermaid-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1.2rem; overflow-x: auto; }
+  pre.mermaid { margin: 0; background: none !important; }
+
+  .layers-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+  @media (max-width: 760px) { .layers-grid { grid-template-columns: 1fr; } }
+  .layer-card { padding: 1rem 1.1rem; border: 1px solid var(--line); border-top: 3px solid var(--accent); background: var(--surface); display: flex; flex-direction: column; gap: 0.4rem; }
+  .layer-card .tag { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); }
+  .layer-card h3 { margin: 0; font-size: 0.94rem; }
+  .layer-card p { font-size: 0.86rem; color: var(--ink-muted); }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  thead th { text-align: left; font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; padding: 0 0.75rem 0.5rem 0; border-bottom: 1px solid var(--line); }
+  tbody td { padding: 0.55rem 0.75rem 0.55rem 0; border-bottom: 1px solid var(--surface-line); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  .path { font-family: ui-monospace, monospace; font-size: 0.79rem; white-space: nowrap; }
+  .step-num { font-family: ui-monospace, monospace; font-size: 0.76rem; color: var(--ink-faint); }
+  .verdict-table td.opt { font-weight: 600; }
+  .verdict-table td.reason { color: var(--ink-muted); }
+  .verdict-table td.verdict { font-family: ui-monospace, monospace; font-size: 0.76rem; font-weight: 700; color: var(--accent-ink); white-space: nowrap; }
+
+  ul.checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  ul.checklist li { padding-left: 1.3rem; position: relative; font-size: 0.92rem; }
+  ul.checklist li::before { content: "–"; position: absolute; left: 0; color: var(--ink-faint); }
+
+  .stage-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .stage { display: flex; gap: 0.9rem; align-items: flex-start; padding: 0.8rem 1rem; border: 1px solid var(--line); background: var(--surface); }
+  .stage .n { flex-shrink: 0; font-family: ui-monospace, monospace; font-weight: 700; font-size: 0.85rem; color: var(--accent); }
+  .stage .body b { display: block; margin-bottom: 0.15rem; }
+  .stage .body p { font-size: 0.86rem; color: var(--ink-muted); }
+
+  footer { border-top: 1px solid var(--line); padding-top: 1.1rem; font-size: 0.8rem; color: var(--ink-faint); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">Kiến trúc / ADR draft · tách khỏi BSVA-1107</div>
+    <h1>Refactor routing — Intent Handler Fan-out &amp; Hội tụ</h1>
+    <p class="subtitle">Thay thế cơ chế route "1 intent chính → 1 node" hiện tại bằng mô hình: map tin nhắn với
+    tập intent đủ tin cậy, chạy song song handler tương ứng, hội tụ về 1 điểm trước khi render prompt — để thêm
+    intent mới sau này chỉ cần đăng ký handler, không cần sửa graph/routing/template.</p>
+    <div class="meta-row">
+      <span>2026-07-22</span>
+      <span>Không thuộc phạm vi BSVA-1107 — sáng kiến kiến trúc riêng</span>
+    </div>
+    <span class="status-badge">Bước 1 verify PASS (22 case, model thật) — sẵn viết ADR + bước 2</span>
+  </header>
+
+  <section>
+    <h2><span class="num">00</span>Hệ thống hiện tại — 9 node, chạy tuần tự</h2>
+    <p>Graph hiện tại có 9 node, bắt đầu từ <code>GreetingDetectionNode</code> (<code>graph.py:90</code>).</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Node</th><th>Đầu vào</th><th>Đầu ra</th></tr></thead>
+        <tbody>
+          <tr><td class="step-num">1</td><td class="path">GreetingDetectionNode<br><i>(bắt đầu)</i></td><td>Tin nhắn cuối user — chỉ check khi là tin đầu tiên</td><td>Khớp câu chào → <code>End(TemplateResult)</code>; không khớp → <code>MetadataExtractionNode</code></td></tr>
+          <tr><td class="step-num">2</td><td class="path">MetadataExtractionNode</td><td>Lịch sử hội thoại + metadata cũ</td><td>Chạy song song trích metadata + intent detection → luôn trả <code>IntentDetectionNode</code></td></tr>
+          <tr><td class="step-num">3</td><td class="path">IntentDetectionNode</td><td><code>detected_intents</code>/<code>intent_confidence</code></td><td>Route theo intent → <code>ComparisonNode</code> | <code>CurrencyConversionNode</code> | <code>TopicDetectionNode</code></td></tr>
+          <tr><td class="step-num">4a</td><td class="path">ComparisonNode <i>(nhánh)</i></td><td>User prompt</td><td>Gọi <code>comparison_agent</code> + load tài liệu → luôn trả <code>TopicDetectionNode</code></td></tr>
+          <tr><td class="step-num">4b</td><td class="path">CurrencyConversionNode <i>(nhánh)</i></td><td>User prompt</td><td>Gọi <code>currency_agent</code> → đứng 1 mình thì <code>End</code>; kèm intent khác thì tiếp tục</td></tr>
+          <tr><td class="step-num">5</td><td class="path">TopicDetectionNode</td><td><code>full_metadata</code> (M0000)</td><td>Ghi <code>is_visa_topic</code>/<code>topic_label</code> → luôn trả <code>EarlyRejectNode</code></td></tr>
+          <tr><td class="step-num">6</td><td class="path">EarlyRejectNode</td><td><code>full_metadata</code>, decision matrix</td><td>Match <code>c_fail</code> → <code>End</code>; không thì <code>MandatoryValidationNode</code></td></tr>
+          <tr><td class="step-num">7</td><td class="path">MandatoryValidationNode</td><td>Danh sách field bắt buộc (M*)</td><td>Ghi <code>mandatory_complete</code>/<code>missing_mandatory</code> → luôn trả <code>SuggestionNode</code></td></tr>
+          <tr><td class="step-num">8</td><td class="path">SuggestionNode <i>(kết thúc)</i></td><td>Toàn bộ state đã tích lũy</td><td>Build <code>ResponseContext</code> + widget → luôn <code>End(LLMStreamResult)</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <b>response_agent không phải là 1 node trong graph này</b> — nó chạy ở tầng API, sau khi graph đã kết thúc,
+      dùng <code>ResponseContext</code> để soạn prompt rồi mới stream câu trả lời. Refactor ở mục 03 chỉ đổi phần
+      graph (bước 3-4), không đổi cách response_agent được gọi.
+    </div>
+
+    <h3>Sơ đồ TRƯỚC khi sửa — vùng refactor nhắm tới (bước 3-5)</h3>
+    <div class="mermaid-wrap">
+<pre class="mermaid">
+flowchart TD
+    A(["MetadataExtractionNode (bước 2)"]) --> B["IntentDetectionNode"]
+    subgraph ZONE["Vùng refactor — thay bằng IntentFanOutNode (mục 03)"]
+        B --> C{"intent_agent classify<br/>_route_intents"}
+        C -->|"currency đứng 1 mình"| D["CurrencyConversionNode"]
+        C -->|"currency kèm intent khác"| E["CurrencyConversionNode(next_intent)"]
+        C -->|"comparison"| F["ComparisonNode"]
+        C -->|"còn lại"| G["TopicDetectionNode (bước 5)"]
+    end
+    D --> H(["End: TemplateResult<br/>KHÔNG qua TopicDetectionNode"])
+    E --> G
+    F --> G
+    G --> I["EarlyRejectNode"] --> J["MandatoryValidationNode"] --> K["SuggestionNode"] --> L(["End: LLMStreamResult"])
+</pre>
+    </div>
+
+    <div class="callout">
+      <b>Vì sao CurrencyConversionNode có 2 nhánh khác hẳn nhau — không phải lỗi thiết kế.</b>
+      <p style="margin-top: 0.5rem;"><b>Đứng 1 mình</b> (vd "20 triệu won đổi ra bao nhiêu tiền Việt?"): câu hỏi
+      tiện ích thuần túy, không liên quan visa. Câu trả lời của <code>currency_agent</code> đã hoàn chỉnh — node
+      kết thúc graph ngay, bỏ qua toàn bộ phần còn lại để trả lời nhanh hơn và tránh rủi ro response_agent viết
+      sai số tiền.</p>
+      <p style="margin-top: 0.5rem;"><b>Kèm intent khác</b>: câu trả lời quy đổi chỉ là 1 phần của lượt đó — node
+      gói kết quả vào <code>prepared_response_contexts</code> rồi đi tiếp vào pipeline bình thường.</p>
+      <p style="margin-top: 0.5rem;"><b>Vì sao chỉ currency có 2 nhánh, comparison thì không:</b>
+      <code>comparison_agent</code> chỉ load tài liệu thô, luôn cần response_agent viết văn cuối — nên
+      <code>ComparisonNode</code> luôn phải tiếp tục. <code>currency_agent</code> tự nó tạo ra được câu trả lời
+      hoàn chỉnh — đây là lý do currency là trường hợp duy nhất có thể "tắt sớm". Cơ chế bật/tắt chỉ là 1 field
+      optional <code>next_intent: Intent | None = None</code> trên cùng 1 node, không phải 2 class riêng.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">01</span>Vấn đề hiện tại</h2>
+    <p><code>IntentDetectionNode</code> route theo đúng 1 intent chính, qua if/elif cố định. Thêm 1 intent mới
+    nghĩa là: sửa if/elif routing, có thể thêm node mới, có thể thêm template mới, và tính lại tổ hợp với các
+    intent đã có. Chi phí thêm 1 intent tăng dần theo số intent đã có — không co giãn tốt.</p>
+    <div class="callout">
+      <b>Hướng đề xuất:</b> bắt tập intent mà tin nhắn khớp, lọc ra những intent có độ tin cậy đủ cao (vd &gt; 80%),
+      chạy đồng thời handler xử lý nghiệp vụ của từng loại intent đó, rồi hội tụ lại 1 điểm để tổng hợp kết quả —
+      áp dụng cho toàn bộ luồng routing, không riêng 1 case cụ thể.
+    </div>
+
+    <h3>Chi phí thêm 1 intent tăng theo N thế nào — 2 cách so trực tiếp</h3>
+    <p>Đây là góc nhìn để trả lời "cách nào lợi/hại hơn khi sau này thêm nhiều intent" — không phải cảm tính, mà
+    tách theo 3 chỗ thật sự tốn chi phí khi N tăng.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Chỗ tốn chi phí</th><th>Cách cũ (if/elif)</th><th>Cách mới (fan-out)</th></tr></thead>
+        <tbody>
+          <tr><td>Routing trong graph</td><td>O(1)/intent — chỉ thêm 1 nhánh <code>elif</code>, không tệ như tưởng</td><td>O(1)/intent — thêm 1 dòng registry, không cần sửa graph</td></tr>
+          <tr><td>Prompt classifier (chỗ THẬT SỰ đau)</td><td>Có nguy cơ O(2^N) — model phân loại theo <b>list chung</b>, cần dạy ví dụ tổ hợp cho từng cặp/nhóm intent (đã thấy với yes/no: thêm 1 intent, cần thêm 3 ví dụ tổ hợp mới với 2 intent sẵn có)</td><td>O(N) nếu confidence chấm <b>độc lập từng intent</b> — không cần ví dụ tổ hợp, chỉ cần đủ ví dụ cho riêng intent mới. <b>Đây là lợi ích thật duy nhất tăng theo N</b> — nhưng chưa kiểm chứng được với model 7B (xem mục 04)</td></tr>
+          <tr><td>Chọn prompt template</td><td>O(1)/intent NẾU dùng kiểu "đi kèm prepared_context" (như currency); O(2^N) NẾU dùng kiểu "swap nguyên template" (như comparison, như yes/no thuần đã bàn)</td><td>O(1)/intent — luôn dùng 1 template chung, không swap</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <b>Kết luận thẳng:</b> lợi ích thật của refactor này không nằm ở graph (routing vốn đã rẻ, kể cả cách cũ) —
+      mà nằm hoàn toàn ở việc classifier có chấm điểm tin cậy được <b>độc lập từng intent</b> hay không. Nếu có —
+      refactor né được đúng chỗ đắt nhất (ví dụ tổ hợp tăng theo cấp số nhân trong prompt), càng nhiều intent sau
+      này càng lời. Nếu KHÔNG (model 7B vẫn cần ví dụ tổ hợp mới chấm đúng, dù chấm độc lập từng nhãn) — toàn bộ
+      phần graph/registry mới thêm ra chỉ là chi phí thuần, không giải quyết được nút thắt thật sự. Nói cách khác:
+      <b>toàn bộ giá trị của refactor này đặt cược vào đúng 1 giả định chưa kiểm chứng</b> — nên việc verify giả
+      định đó (mục 04) phải làm TRƯỚC khi quyết định theo đuổi refactor, không phải làm sau.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>Mục tiêu &amp; phi mục tiêu</h2>
+    <div class="layers-grid">
+      <div class="layer-card">
+        <span class="tag">Mục tiêu</span>
+        <h3>Thêm intent mới không đụng graph</h3>
+        <p>Đăng ký 1 handler + 1 kind render — không viết node mới, không viết template mới, không sửa if/elif.</p>
+      </div>
+      <div class="layer-card">
+        <span class="tag">Mục tiêu</span>
+        <h3>Nhiều intent cùng active → chạy song song</h3>
+        <p>Không xử lý tuần tự (như <code>force_continue</code> hiện tại) — mọi handler đủ điều kiện chạy cùng lúc.</p>
+      </div>
+      <div class="layer-card">
+        <span class="tag">Phi mục tiêu</span>
+        <h3>Không đổi 2 intent hiện có ngay lượt đầu</h3>
+        <p><code>comparison</code>/<code>currency_conversion</code> di trú theo từng bước riêng (mục 06).</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>Kiến trúc đề xuất</h2>
+
+    <h3>asyncio.gather trong 1 node, hay Fork/Join có sẵn của pydantic-graph — câu hỏi thật không phải "cái nào chín hơn"</h3>
+    <p><code>pydantic_graph</code> có sẵn cơ chế chạy song song ở cấp graph —
+    <code>Fork</code>/<code>Join</code>/<code>Broadcast</code>/<code>Spread</code>, export công khai, có tài liệu
+    chính thức đầy đủ (<a href="https://pydantic.dev/docs/ai/graph/builder/parallel/">docs</a>), không có cảnh báo
+    experimental/preview nào. Đây là lựa chọn thật, không phải API thử nghiệm.</p>
+    <p>Nhưng đọc kỹ source thì thấy 1 câu quan trọng trong <code>graph_builder.py</code> — nơi
+    <code>Fork</code>/<code>Join</code> thực sự sống:</p>
+    <blockquote>
+      "...co-occupy the names (<code>graph</code>, <code>mermaid</code>) that the <b>legacy</b> <code>BaseNode</code>-based
+      runner currently holds at the top level. In v2, after the legacy runner is removed, <code>Graph</code> and the
+      mermaid helpers are expected to move..."
+    </blockquote>
+    <p>Nói thẳng: <code>Fork</code>/<code>Join</code> sống trong <code>GraphBuilder</code> — hệ thống mà
+    <b>chính thư viện gọi cách <code>Graph</code>/<code>BaseNode</code> mà toàn bộ 9 node hiện tại đang dùng là
+    "legacy"</b>, và có kế hoạch xoá hẳn "legacy runner" ở v2 tương lai (chưa có mốc thời gian cụ thể).
+    <code>GraphBuilder</code> có thiết kế để tương thích ngược với <code>BaseNode</code> cổ điển (import thẳng
+    <code>BaseNode</code>, có cơ chế "decision branch... against BaseNode types from the v1 system") — nên về mặt
+    kỹ thuật, chèn <code>Fork</code>/<code>Join</code> vào đúng vùng intent-routing mà không cần viết lại cả 9 node
+    là khả thi, không phải viết lại toàn graph.</p>
+    <div class="table-wrap">
+      <table class="verdict-table">
+        <tbody>
+          <tr><td class="opt">asyncio.gather trong 1 node</td><td class="verdict">Nhất quán</td><td class="reason">Toàn bộ 9 node hiện tại + code này cùng 1 paradigm ("legacy" runner) — không trộn 2 cách dựng graph trong cùng 1 hệ thống, dù về sau vẫn phải di trú khỏi "legacy" cùng lúc với phần còn lại</td></tr>
+          <tr><td class="opt">Fork/Join của pydantic-graph</td><td class="verdict">Đi trước</td><td class="reason">Ổn định, có docs, giải quyết luôn gap "mất trace Comparison/Currency" (mục 03, callout dưới) vì node vẫn là BaseNode thật — nhưng là bước đầu tiên rời "legacy runner" trong khi 8 node còn lại chưa đi, tạo ra 2 paradigm cùng tồn tại trong 1 graph, ít nhất là tạm thời</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <b>Đây là câu hỏi chiến lược, không phải quyết định kỹ thuật của riêng refactor này:</b> có nên bắt đầu di
+      trú khỏi "legacy runner" ngay từ tính năng này, hay giữ nhất quán với 8 node còn lại cho tới khi có 1 quyết
+      định rõ ràng (và 1 ADR riêng) về việc di trú toàn bộ graph sang <code>GraphBuilder</code>? <code>AGENTS.md</code>
+      của repo vốn đã yêu cầu ADR-level review cho cả việc bump minor version của thư viện này — nên việc chủ động
+      bước sang API thế hệ sau, dù ổn định, cũng nên được nêu tường minh trong ADR của refactor này để người duyệt
+      tự quyết, không nên mặc định chọn 1 bên. Bản thiết kế ở mục 03 dưới đây trình bày theo hướng
+      <code>asyncio.gather</code> (nhất quán với hệ thống hiện tại) làm phương án mặc định — nhưng <code>Fork</code>/
+      <code>Join</code> là phương án thay thế hợp lệ, không phải bị loại vì lý do chất lượng.
+    </div>
+
+    <h3>Sơ đồ SAU khi sửa — cùng vùng bước 3-5, đã thay bằng fan-out</h3>
+    <div class="mermaid-wrap">
+<pre class="mermaid">
+flowchart TD
+    A(["MetadataExtractionNode (bước 2)"]) --> B["intent_agent classify<br/>(confidence RIÊNG từng intent)"]
+    subgraph ZONE["Vùng đã refactor — IntentFanOutNode"]
+        B --> C{"còn intent nào<br/>confidence ≥ ngưỡng?"}
+        C -->|"không có"| G["TopicDetectionNode (bước 5)"]
+        C -->|"có ≥ 1 intent"| D[["asyncio.gather() — chạy SONG SONG"]]
+        D --> H1["currency_handler"]
+        D --> H2["comparison_handler"]
+        D --> H3["... handler khác (mở rộng)"]
+        H1 --> M{{"Gom vào prepared_response_contexts"}}
+        H2 --> M
+        H3 --> M
+        M -->|"chỉ 1 handler, is_terminal=True (G2)"| END1(["End: trả lời trực tiếp"])
+        M -->|"còn lại"| G
+    end
+    G --> I["EarlyRejectNode"] --> J["MandatoryValidationNode"] --> K["SuggestionNode"] --> L(["End: LLMStreamResult"])
+</pre>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--ink-muted);">So với sơ đồ TRƯỚC (mục 00): if/elif cố định + xử lý
+    tuần tự được thay bằng 1 node fan-out generic + registry handler chạy song song. Nhánh "kết thúc sớm" ở TRƯỚC
+    (currency đứng 1 mình) tương ứng nhánh <code>is_terminal=True</code> ở SAU — vẫn là 1 rule đặc cách, chưa
+    tổng quát hoá hết được (xem G2, mục 08).</p>
+
+    <div class="callout">
+      <b>"Chỉ 1 handler" là trường hợp nào — ví dụ cụ thể:</b> tin nhắn <i>"1 triệu yên hôm nay bao nhiêu tiền
+      Việt?"</i> — classifier chỉ trả về <code>currency_conversion</code> với confidence cao, <code>comparison</code>
+      và <code>yes_no_question</code> đều dưới ngưỡng nên không lọt vào <code>qualifying</code>. Sau
+      <code>asyncio.gather</code>, danh sách kết quả chỉ có đúng 1 phần tử (từ <code>currency_handler</code>) —
+      đúng lúc này <code>len(qualifying) == 1</code>. Vì <code>currency_agent</code> tự nó trả lời được hoàn chỉnh
+      (không cần visa knowledge), handler đánh dấu <code>is_terminal=True</code> trên kết quả đó, và
+      <code>IntentFanOutNode</code> kết thúc graph ngay với đúng nội dung đó — không đi tiếp qua
+      <code>TopicDetectionNode</code>/response_agent. Ngược lại, nếu tin nhắn là <i>"1 triệu yên đổi được bao
+      nhiêu, đủ xin visa không?"</i> — <code>currency_conversion</code> + <code>yes_no_question</code> cùng qualify
+      → 2 handler chạy song song → <code>len(qualifying) == 2</code> → không nhánh nào <code>is_terminal</code> vì
+      còn phải trả lời phần yes/no nữa → đi tiếp vào <code>TopicDetectionNode</code> như bình thường.
+    </div>
+
+    <h3>Interface handler</h3>
+    <p style="font-size: 0.85rem; color: var(--ink-muted);">Bản dưới đây đã gộp hướng giải quyết cho cả 5 gap ở
+    mục 08 (đánh dấu G1-G5 ngay tại chỗ) — không còn là sketch happy-path.</p>
+    <pre class="code-block"><code>class IntentHandler(Protocol):
+    """Mỗi intent đăng ký đúng 1 handler tuân theo interface này."""
+
+    async def run(self, user_prompt: str, deps: ResponseDeps) -> HandlerOutcome:
+        """HandlerOutcome tách riêng "nội dung góp vào prompt" và "có phải câu trả lời
+        cuối cùng luôn không" — 2 việc khác nhau, không gộp vào PreparedResponseContext."""
+
+
+@dataclass
+class HandlerOutcome:
+    context: PreparedResponseContext | None = None   # None = handler tự quyết không góp gì
+    is_terminal: bool = False                          # G2: đủ để trả lời trực tiếp, không cần response_agent
+
+    def __post_init__(self) -> None:
+        # Chặn trạng thái mâu thuẫn: is_terminal=True mà không có nội dung
+        # sẽ khiến IntentFanOutNode kết thúc graph với câu trả lời rỗng, im lặng.
+        if self.is_terminal and self.context is None:
+            raise ValueError("is_terminal=True yêu cầu context khác None")
+
+
+HANDLER_REGISTRY: dict[Intent, IntentHandler] = {
+    Intent.CURRENCY_CONVERSION: CurrencyHandler(),
+    Intent.COMPARISON: ComparisonHandler(),
+    Intent.YES_NO_QUESTION: YesNoHandler(),
+    # thêm intent mới = thêm 1 dòng ở đây, không sửa gì khác
+}
+
+# G4 + G5: 1 bảng ưu tiên tĩnh dùng chung cho cả thứ tự section trong prompt (G4)
+# lẫn giá trị fallback của state.user_intent (G5) — 1 nguồn duy nhất, không lệch nhau.
+_HANDLER_PRIORITY: tuple[Intent, ...] = (
+    Intent.COMPARISON,
+    Intent.CURRENCY_CONVERSION,
+    Intent.YES_NO_QUESTION,
+)
+_INTENT_CONFIDENCE_THRESHOLD = 0.80   # điểm khởi đầu để bàn — chốt thật dựa trên kết quả verify (xem mục 06)
+_FANOUT_TIMEOUT_SECONDS = 15.0        # G3: chặn latency trần của cả lượt fan-out
+
+
+def _priority_key(intent: Intent) -> int:
+    return _HANDLER_PRIORITY.index(intent) if intent in _HANDLER_PRIORITY else len(_HANDLER_PRIORITY)
+
+
+@dataclass
+class IntentFanOutNode(BaseNode[ChatState, ChatDeps, ChatResult]):
+    async def run(
+        self,
+        ctx: GraphRunContext[ChatState, ChatDeps],
+    ) -> End[TemplateResult] | TopicDetectionNode:
+        user_prompt = extract_user_prompt(ctx.deps.request.conversations)
+        deps = ResponseDeps(
+            metadata=ctx.state.full_metadata,
+            metadata_service=ctx.deps.metadata_service,
+        )
+
+        qualifying = sorted(
+            (i for i in ctx.state.detected_intents_scored if i.confidence >= _INTENT_CONFIDENCE_THRESHOLD),
+            key=lambda i: _priority_key(i.intent),
+        )
+        if qualifying:
+            ctx.state.user_intent = qualifying[0].intent   # G5: ưu tiên cao nhất, tương thích ngược với suggestion.py
+
+        tasks = {
+            asyncio.create_task(HANDLER_REGISTRY[i.intent].run(user_prompt, deps)): i.intent
+            for i in qualifying if i.intent in HANDLER_REGISTRY
+        }
+
+        # G3: timeout tổng cho cả lượt — handler nào chưa xong bị hủy, không kéo cả lượt
+        done, pending = await asyncio.wait(tasks, timeout=_FANOUT_TIMEOUT_SECONDS)
+        for task in pending:
+            task.cancel()
+            logger.warning("intent_handler.timeout", intent=tasks[task].value)
+
+        # G1: mỗi handler cô lập riêng — 1 handler lỗi không chặn kết quả handler khác
+        outcomes: list[tuple[Intent, HandlerOutcome]] = []
+        for task in done:
+            intent = tasks[task]
+            try:
+                outcomes.append((intent, task.result()))
+            except Exception as e:
+                logger.warning("intent_handler.failed", intent=intent.value, error=str(e))
+
+        # G4: sort lại theo bảng ưu tiên tĩnh — asyncio.wait trả về set, không giữ thứ tự
+        outcomes.sort(key=lambda pair: _priority_key(pair[0]))
+
+        # G2: chỉ 1 handler qualify và tự nhận đã là câu trả lời hoàn chỉnh → kết thúc sớm
+        if len(outcomes) == 1 and outcomes[0][1].is_terminal:
+            content = outcomes[0][1].context.content if outcomes[0][1].context else ""
+            return End(TemplateResult(text=content, exit_node="IntentFanOutNode"))
+
+        for _, outcome in outcomes:
+            if outcome.context is not None:
+                ctx.state.prepared_response_contexts.append(outcome.context)
+
+        return TopicDetectionNode()</code></pre>
+
+    <p style="font-size: 0.85rem; color: var(--ink-muted);"><code>PreparedResponseContext.kind</code> phải đổi từ
+    <code>Literal["currency_conversion", "yes_no_question"]</code> cố định sang mở — mỗi handler tự khai báo kind
+    riêng, <code>_build_prepared_context_section</code> render theo registry thay vì if/elif liệt kê tay.</p>
+
+    <div class="callout">
+      <b>Comparison/Currency không còn là node graph sau refactor — cái giá riêng của phương án asyncio.gather.</b>
+      Hiện tại <code>ComparisonNode</code>/<code>CurrencyConversionNode</code> là class kế thừa <code>BaseNode</code>
+      — pydantic-graph coi là 2 node thật, có <code>run()</code> riêng, xuất hiện riêng trong trace. Sau refactor
+      (theo bản <code>asyncio.gather</code>), logic gọi <code>comparison_agent</code>/<code>currency_agent</code>
+      chuyển thành <code>ComparisonHandler</code>/<code>CurrencyHandler</code> — chỉ là object Python thường theo
+      <code>IntentHandler</code> protocol, không kế thừa <code>BaseNode</code>, chỉ đăng ký vào
+      <code>HANDLER_REGISTRY</code>. Node graph thật duy nhất còn lại trong vùng này là
+      <code>IntentFanOutNode</code>. Hệ quả: <code>_trace/topology.py</code> không còn thấy "ComparisonNode" như 1
+      bước riêng trong trace nữa — mọi thứ gộp vào 1 span <code>IntentFanOutNode</code>, muốn biết handler nào chạy
+      phải log riêng bên trong (liên quan G4, mục 08). Test cho handler cũng đổi loại — không cần dựng
+      <code>GraphRunContext</code> nữa, chỉ gọi thẳng hàm — là bộ test khác, phải viết lại chứ không sửa được test
+      cũ. <b>Nếu chọn Fork/Join thay vì asyncio.gather (xem đầu mục 03)</b>, gap này không xảy ra — Comparison/
+      Currency vẫn là <code>BaseNode</code> thật, vẫn xuất hiện riêng trong trace, vì Fork chỉ điều phối node có
+      sẵn chạy song song chứ không gộp chúng thành handler.
+    </div>
+
+    <h3>File cần sửa — đúng phạm vi bước 1-2 (chưa migrate currency/comparison)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Bước</th><th>File</th><th>Thay đổi</th></tr></thead>
+        <tbody>
+          <tr><td class="step-num">1</td><td class="path">graph/agents/intent.py</td><td><code>IntentDetectionResult</code>: đổi output schema sang list điểm riêng từng intent (vd <code>scored_intents: list[ScoredIntent]</code>, mỗi phần tử có <code>intent</code> + <code>confidence</code> riêng) thay vì 1 <code>confidence</code> chung</td></tr>
+          <tr><td class="step-num">1</td><td class="path">prompt_templates/agents/intent_detection.yaml</td><td>Decision rules + examples dạy model chấm độc lập từng intent — đây là phần verify ở mục 06</td></tr>
+          <tr><td class="step-num">1</td><td class="path">graph/state.py</td><td>Thêm field <code>detected_intents_scored: list[ScoredIntent]</code> vào <code>ChatState</code></td></tr>
+          <tr><td class="step-num">2</td><td class="path">graph/nodes/intent_fanout.py <i>(mới)</i></td><td><code>IntentHandler</code> protocol, <code>HandlerOutcome</code>, <code>HANDLER_REGISTRY</code>, <code>_HANDLER_PRIORITY</code>, <code>_INTENT_CONFIDENCE_THRESHOLD</code>, <code>_FANOUT_TIMEOUT_SECONDS</code>, <code>IntentFanOutNode</code> (mục 03)</td></tr>
+          <tr><td class="step-num">2</td><td class="path">chat/schemas.py</td><td><code>PreparedResponseContext.kind</code> đổi từ <code>Literal</code> cố định sang mở (mỗi handler tự khai báo kind riêng)</td></tr>
+          <tr><td class="step-num">2</td><td class="path">prompts/builder.py</td><td><code>_build_prepared_context_section</code> render theo registry thay vì liệt kê if/elif tay</td></tr>
+          <tr><td class="step-num">2</td><td class="path">graph/_trace/topology.py</td><td>Thêm entry span cho <code>IntentFanOutNode</code></td></tr>
+          <tr><td class="step-num">2</td><td class="path">tests/unit/.../test_intent_fanout.py <i>(mới)</i></td><td>Test bằng 1 handler giả lập (fake), chưa đụng currency/comparison thật</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--ink-muted);">File cho việc di trú <code>currency_conversion</code>/
+    <code>comparison</code> thật (bước 3-4) chưa liệt kê ở đây — phụ thuộc kết quả chuẩn hóa output
+    <code>comparison_agent</code> (mục 04), nên để lại khi tới đúng bước đó.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>3 chỗ không tổng quát hoá gọn được — cần đặc cách</h2>
+
+    <div class="callout">
+      <b>Currency đứng một mình hiện kết thúc graph ngay, không qua response_agent.</b>
+      Khi <code>currency_conversion</code> là intent duy nhất, câu trả lời quy đổi tự nó đã đủ. Mô hình "luôn hội
+      tụ rồi mới render prompt" phải đặc cách: nếu sau khi lọc chỉ còn đúng 1 handler và nó tự đánh dấu "đủ để trả
+      lời trực tiếp", cho phép bỏ qua response_agent, kết thúc sớm. Không tổng quát 100% được — đây là 1 rule
+      ngoại lệ cần giữ lại, không phải lỗi thiết kế.
+    </div>
+
+    <h3>Có nên gộp luôn currency vào chung 1 luồng, bỏ hẳn nhánh kết thúc sớm?</h3>
+    <p>Kỹ thuật thì được — nếu bỏ hẳn nhánh này, mọi handler đều luôn hội tụ + luôn qua response_agent, gap ở
+    callout trên biến mất hoàn toàn. Nhưng đây là đổi hành vi thật của tính năng đang chạy production, không phải
+    chi tiết code nội bộ.</p>
+    <div class="table-wrap">
+      <table class="verdict-table">
+        <tbody>
+          <tr><td class="opt">Giữ 2 nhánh (đặc cách is_terminal)</td><td class="verdict">An toàn hơn</td><td class="reason">Giữ nguyên latency + độ chính xác số tiền hiện tại; đổi lại mô hình không tổng quát 100%</td></tr>
+          <tr><td class="opt">Bỏ hẳn, luôn 1 luồng qua response_agent</td><td class="verdict">Rủi ro UX</td><td class="reason">Mô hình sạch, không ngoại lệ — nhưng tốn thêm 1 lượt LLM + toàn bộ pipeline visa cho 1 câu hỏi quy đổi đơn giản; số tiền phải qua 1 lượt LLM viết lại — thêm 1 kênh có thể sai lệch con số</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <b>Khuyến nghị:</b> giữ nguyên nhánh kết thúc sớm cho currency — trừ khi có dữ liệu thật cho thấy
+      latency/độ chính xác không phải vấn đề, hoặc có yêu cầu sản phẩm rõ ràng muốn mọi câu trả lời đều đi qua
+      giọng văn tư vấn thống nhất. Đây là quyết định sản phẩm, nên xác nhận trước khi đổi hành vi 1 tính năng
+      đang chạy thật.
+    </div>
+
+    <div class="callout">
+      <b>3 loại intent hiện có KHÔNG cùng "hình dạng" kết quả.</b>
+      Currency: agent trả thẳng câu trả lời hoàn chỉnh. Comparison: agent chỉ load tài liệu thô, câu văn thật do
+      response_agent viết sau. Cần chuẩn hóa lại output của <code>comparison_agent</code> trước khi handler hoá
+      được, không copy-paste nguyên trạng.
+    </div>
+
+    <div class="callout">
+      <b>Confidence hiện là 1 số cho cả cụm intent, không phải riêng từng cái.</b>
+      Đổi classifier sang trả confidence riêng từng intent là thay đổi schema + prompt + decision rules, và cần
+      verify model 7B (tắt reasoning) có tự chấm điểm tin cậy độc lập từng nhãn đáng tin không — chưa có gì đảm
+      bảo, cần 1 vòng test riêng trước khi merge vào routing thật.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>Vì sao cần ADR trước khi code</h2>
+    <p><code>AGENTS.md</code> (quy ước đã có sẵn của repo) ghi rõ:</p>
+    <blockquote>
+      "pydantic-graph pre-1.0: KHÔNG bump minor version mà không có ADR-level review (breaking ship chung node
+      serialization)."
+    </blockquote>
+    <p>Refactor này đổi hẳn cấu trúc graph (nhiều node cố định → 1 node fan-out generic), lớn hơn nhiều so với bump
+    version thư viện — nên chắc chắn nằm trong phạm vi cần ADR. Ngoài ra <code>_trace/topology.py</code> gắn chặt
+    với cấu trúc node cố định hiện tại — đổi sang fan-out generic làm thay đổi cách observability hoạt động cho
+    toàn bộ chat graph, không riêng gì 1 intent.</p>
+    <div class="callout">
+      <b>ADR đã viết:</b> <code>docs/adr/0013-intent-fanout-handler-registry.md</code> — theo đúng format
+      Context/Decision/Alternatives Considered/Consequences/Maintenance Rule của các ADR khác trong repo (tham khảo
+      ADR-0002, cùng là quyết định kiến trúc graph). Status hiện tại: <b>Proposed</b> — chưa Accepted, cần review.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span>Lộ trình di trú — từng bước, không big-bang</h2>
+    <div class="callout">
+      <b>Đã sửa lại thứ tự so với bản trước</b> — <code>IntentFanOutNode</code> (mục 03) đọc thẳng
+      <code>detected_intents_scored</code> (confidence riêng từng intent), nên hạ tầng khung KHÔNG thể dựng và test
+      độc lập trước khi classifier đổi xong — trình tự cũ (đổi classifier ở bước 4, sau khi đã "xây hạ tầng khung"
+      ở bước 1) tự mâu thuẫn với chính code đề xuất. Đổi classifier phải lên đầu.
+    </div>
+    <div class="stage-list">
+      <div class="stage">
+        <div class="n">1</div>
+        <div class="body"><b>Verify + đổi classifier sang confidence-per-intent</b>
+        <p>Làm trước tiên, vì mọi phần còn lại (kể cả bản demo hạ tầng) đều phụ thuộc vào dữ liệu này. Bao gồm cả
+        việc verify giả định ở mục 01: model 7B có chấm điểm tin cậy độc lập từng intent đáng tin không — nếu
+        không, dừng lại ở đây, không đi tiếp các bước sau.</p></div>
+      </div>
+    </div>
+
+    <h3>Cách verify classifier (bước 1) — cụ thể, không phải "cứ chạy thử xem sao"</h3>
+    <p>Mục tiêu verify: xác nhận model 7B thật (tắt reasoning) chấm confidence <b>độc lập từng intent</b> đáng tin —
+    tức việc 1 intent khác cũng đang xuất hiện trong tin nhắn KHÔNG được kéo tụt confidence của 1 intent thật sự có
+    mặt xuống dưới ngưỡng. Đây là giả định duy nhất quyết định refactor có lời hay không (mục 01).</p>
+    <ul class="checklist">
+      <li><b>1. Dựng golden set</b> <span class="note">— theo đúng convention eval sẵn có của repo (skill
+      <code>metadata-eval-testcase</code>, thư mục kiểu <code>tests/eval/</code>), nhưng cho intent thay vì
+      metadata field. Không viết tay từ đầu — tái dùng khuôn đã có.</span></li>
+      <li><b>2. Phủ đủ 4 nhóm case, mỗi nhóm nhiều mẫu</b> <span class="note">— (a) đơn: chỉ 1 intent, không kèm gì
+      khác (currency-only, comparison-only, yes_no-only, unknown-only); (b) combo: 2-3 intent cùng lúc trong 1 tin
+      nhắn (currency+comparison, currency+yes_no, comparison+yes_no, cả 3); (c) near-miss: câu dễ gây nhầm nhưng
+      KHÔNG thật sự thuộc intent đó (vd nhắc tên tiền tệ nhưng không hỏi quy đổi); (d) mơ hồ thật: câu mà ngay cả
+      người đọc cũng phân vân — confidence nên ở mức trung bình, không nên tự tin tuyệt đối.</span></li>
+      <li><b>3. Chạy model 7B thật (không mock) trên toàn bộ golden set</b> <span class="note">— ghi lại confidence
+      model trả cho MỌI intent, không chỉ intent đúng — cần biết cả các intent sai có bị chấm cao nhầm không.</span></li>
+      <li><b>4. Đo đúng câu hỏi cốt lõi — case (b) combo có làm tụt confidence của intent thật so với case (a) đơn không</b>
+      <span class="note">— vd so confidence của <code>currency_conversion</code> trong câu currency-only vs trong câu
+      currency+yes_no. Nếu tụt đáng kể (dưới ngưỡng dù intent vẫn thật sự đúng) → giả định độc lập KHÔNG đứng vững,
+      dừng refactor tại đây theo đúng chỉ dẫn ở bước 1.</span></li>
+      <li><b>5. Tính precision/recall tại ngưỡng đề xuất (0.80)</b> <span class="note">— cho từng intent riêng, không
+      gộp chung. Ngưỡng cuối có thể khác nhau giữa các intent (vd yes_no có thể cần ngưỡng khác currency), không bắt
+      buộc dùng chung 1 số 80% như điểm khởi đầu trong code mẫu.</span></li>
+      <li><b>6. Gate quyết định</b> <span class="note">— nếu recall/precision + độ ổn định qua case combo đạt ngưỡng
+      team chấp nhận được (tự định nghĩa, vd F1 &gt; 0.85 mỗi intent) → tiếp tục bước 2. Nếu không → dừng, quay lại
+      dùng if/elif hiện tại, không đầu tư tiếp vào hạ tầng fan-out.</span></li>
+    </ul>
+
+    <div class="callout">
+      <b>Đã chạy spike thật (22 case, model 7B thật qua endpoint nội bộ) — kết quả: PASS.</b>
+      <p style="margin-top: 0.5rem;"><b>Câu hỏi cốt lõi (combo có làm tụt confidence intent thật so với solo không):
+      KHÔNG bị tụt.</b> Chênh lệch avg confidence solo→combo: comparison +0.01, currency_conversion +0.03,
+      yes_no_question -0.17 (combo còn CAO hơn solo). Giả định sống còn của toàn bộ refactor (mục 01) được ủng hộ,
+      không bị bác bỏ, bởi dữ liệu thật.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Intent</th><th>Precision</th><th>Recall</th><th>Ghi chú</th></tr></thead>
+          <tbody>
+            <tr><td>currency_conversion</td><td>1.00</td><td>1.00</td><td>Hoàn hảo, kể cả near-miss (nhắc tiền nhưng không hỏi quy đổi)</td></tr>
+            <tr><td>comparison</td><td>0.86</td><td>1.00</td><td>1 false-positive duy nhất, rơi vào case tự ghi chú trước là "ranh giới mơ hồ" — chưa chắc là lỗi thật</td></tr>
+            <tr><td>yes_no_question</td><td>1.00</td><td>0.73</td><td>Không false-positive nào; 3 case miss đều rơi vào nhóm ambiguous cố tình làm khó, KHÔNG rơi vào combo rõ ràng nào (mọi combo yes_no đều 0.9-0.95)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top: 0.5rem;"><b>2 lưu ý mang theo bước 2, không phải lý do dừng lại:</b>
+      (1) <code>yes_no_question</code> có thể cần ngưỡng riêng thấp hơn <code>_INTENT_CONFIDENCE_THRESHOLD</code>
+      chung (vd 0.5-0.6 thay vì 0.80) — model thể hiện độ tự tin phân cấp hợp lý cho case mơ hồ (0.1/0.4/0.6), không
+      phải đoán bừa, chỉ cần chỉnh ngưỡng theo intent thay vì dùng chung 1 số.
+      (2) N=22 là quy mô spike, chưa phải kiểm định thống kê đầy đủ — nên mở rộng golden set trước khi khoá cứng
+      ngưỡng cuối, nhưng xu hướng đã đủ rõ để quyết định đi tiếp bước 2.</p>
+    </div>
+
+    <div class="stage-list">
+      <div class="stage">
+        <div class="n">2</div>
+        <div class="body"><b>Viết ADR + xây hạ tầng khung</b>
+        <p>Chưa migrate intent nào — dựng khung (interface, registry, IntentFanOutNode) trên dữ liệu confidence
+        thật từ bước 1, test bằng 1 handler giả lập.</p></div>
+      </div>
+      <div class="stage">
+        <div class="n">3</div>
+        <div class="body"><b>Di trú <code>currency_conversion</code> trước</b>
+        <p>Đơn giản hơn comparison, nhưng có case đặc biệt (mục 04) cần verify kỹ — dùng làm phép thử cho rule "kết thúc sớm".</p></div>
+      </div>
+      <div class="stage">
+        <div class="n">4</div>
+        <div class="body"><b>Di trú <code>comparison</code></b>
+        <p>Phức tạp hơn vì đang có template riêng — cần chuẩn hóa lại output trước khi handler hoá, xóa template riêng sau khi verify xong.</p></div>
+      </div>
+      <div class="stage">
+        <div class="n">5</div>
+        <div class="body"><b>Intent mới (kể cả yes/no) đăng ký thẳng vào registry</b>
+        <p>Từ bước này, thêm intent mới không cần sửa gì ngoài viết 1 handler + đăng ký.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">07</span>Quan hệ với BSVA-1107</h2>
+    <div class="callout">
+      Ticket bug BSVA-1107 (yes/no bị chôn trong tin nhắn dài) đi theo thiết kế đã chốt riêng — không chờ refactor
+      này. Khi hạ tầng ở mục 06 sẵn sàng tới bước 5, yes/no có thể di trú từ "node + template riêng" sang "handler
+      đăng ký vào registry" — là 1 thay đổi tương thích, không phải viết lại.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">08</span>Cơ chế song song — 5 gap, đã có hướng giải quyết</h2>
+    <p>Cả 5 gap dưới đây đã được gộp vào bản code ở mục 03 (đánh dấu G1-G5 ngay trong code). Ghi lại vấn đề + hướng
+    làm riêng từng gap ở đây để dễ tra cứu, không phải lặp lại thiết kế.</p>
+
+    <div class="callout">
+      <b>G1 — <code>asyncio.gather</code> không có <code>return_exceptions=True</code> → 1 handler lỗi làm sập cả lượt.</b>
+      <p style="margin-top: 0.5rem;">1 trong N handler raise exception sẽ làm toàn bộ <code>gather</code> thất bại,
+      mất luôn kết quả của các handler khác đã chạy xong.</p>
+      <p style="margin-top: 0.5rem;"><b>Hướng làm:</b> đổi <code>gather</code> thành <code>asyncio.create_task</code>
+      + <code>asyncio.wait</code> từng task riêng (xem mục 03), bọc <code>try/except</code> khi lấy
+      <code>task.result()</code> — 1 task lỗi chỉ log warning + bỏ qua, không ảnh hưởng các task còn lại.</p>
+    </div>
+
+    <div class="callout">
+      <b>G2 — Rule "currency đứng 1 mình thì kết thúc sớm" chưa có chỗ triển khai thật trong code.</b>
+      <p style="margin-top: 0.5rem;">Sketch ban đầu luôn <code>return TopicDetectionNode()</code>, không có nhánh
+      kiểm tra "chỉ 1 handler qualify và nó đã là câu trả lời hoàn chỉnh".</p>
+      <p style="margin-top: 0.5rem;"><b>Hướng làm:</b> tách riêng khái niệm "nội dung góp vào prompt" và "có phải
+      câu trả lời cuối cùng" bằng 1 kiểu bọc mới — <code>HandlerOutcome(context, is_terminal)</code> — thay vì nhồi
+      cả 2 vào <code>PreparedResponseContext</code>. <code>IntentFanOutNode</code> chỉ <code>End(...)</code> sớm khi
+      đúng 1 handler qualify và tự đánh dấu <code>is_terminal=True</code> (mục 03).</p>
+      <p style="margin-top: 0.5rem;"><b>Lưu ý dễ hiểu nhầm — <code>is_terminal</code> KHÔNG tự bật vì "đứng 1 mình".</b>
+      Đây là thuộc tính cố định của từng loại handler (nội dung của nó tự thân có đủ làm câu trả lời hoàn chỉnh
+      không), không phải do việc đứng một mình quyết định. Việc "đứng 1 mình" là job riêng của
+      <code>IntentFanOutNode</code> (đếm <code>len(outcomes)</code>) — kết thúc sớm cần <b>cả 2 điều kiện</b> cùng
+      đúng, không phải chỉ 1.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tình huống</th><th>len(outcomes)</th><th>is_terminal của handler đó</th><th>Kết quả</th></tr></thead>
+          <tbody>
+            <tr><td>Currency đứng 1 mình</td><td>1</td><td><code>True</code> (Currency luôn vậy — tự sinh câu trả lời hoàn chỉnh)</td><td>Kết thúc sớm — khớp hành vi hiện tại</td></tr>
+            <tr><td>Comparison đứng 1 mình</td><td>1</td><td><code>False</code> (Comparison luôn vậy — chỉ có tài liệu thô)</td><td>KHÔNG kết thúc sớm — đi tiếp, response_agent viết câu trả lời từ tài liệu đã gom</td></tr>
+            <tr><td>Currency + Comparison cùng lúc</td><td>2</td><td>Currency=<code>True</code> nhưng không đủ vì len≠1</td><td>KHÔNG kết thúc sớm — vẫn phải đợi phần comparison</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>G3 — Chưa có timeout tổng cho cả fan-out, chỉ có timeout riêng lẻ từng handler.</b>
+      <p style="margin-top: 0.5rem;">Nếu 3-4 handler cùng chạy song song, 1 handler chậm (dù có timeout riêng)
+      vẫn có thể kéo dài toàn bộ lượt phản hồi tới sát ngưỡng timeout của chính nó.</p>
+      <p style="margin-top: 0.5rem;"><b>Hướng làm:</b> <code>asyncio.wait(tasks, timeout=_FANOUT_TIMEOUT_SECONDS)</code>
+      thay vì <code>gather</code> — task nào chưa xong khi hết giờ bị <code>cancel()</code> + log warning, chỉ dùng
+      kết quả các task đã xong. Con số 15s là điểm khởi đầu để bàn, không phải số đã đo — cần benchmark latency
+      thật của <code>comparison_agent</code>/<code>currency_agent</code> trước khi chốt.</p>
+    </div>
+
+    <div class="callout">
+      <b>G4 — Thứ tự các section trong prompt không còn xác định.</b>
+      <p style="margin-top: 0.5rem;">Thứ tự kết quả phụ thuộc thứ tự classifier liệt kê intent, và
+      <code>asyncio.wait</code> trả về <code>set</code> (không giữ thứ tự) — càng không tái lập được.</p>
+      <p style="margin-top: 0.5rem;"><b>Hướng làm:</b> 1 bảng ưu tiên tĩnh <code>_HANDLER_PRIORITY</code> (mục 03),
+      sort kết quả theo bảng này trước khi append vào <code>prepared_response_contexts</code> — thứ tự section
+      trong prompt luôn tái lập được, không phụ thuộc thứ tự classifier hay thứ tự hoàn thành của task.</p>
+    </div>
+
+    <div class="callout">
+      <b>G5 — <code>state.user_intent</code> (1 giá trị scalar) đang được nơi khác dùng, chưa rõ còn đúng nghĩa không.</b>
+      <p style="margin-top: 0.5rem;"><code>suggestion.py:155</code> check
+      <code>state.user_intent == Intent.COMPARISON</code> để ưu tiên build widget chọn thị trường. Khi comparison
+      chạy song song với intent khác, 1 giá trị scalar không còn phản ánh đúng thực tế.</p>
+      <p style="margin-top: 0.5rem;"><b>Hướng làm:</b> dùng chung đúng bảng <code>_HANDLER_PRIORITY</code> của G4 —
+      <code>state.user_intent</code> luôn được gán bằng intent đứng đầu bảng ưu tiên trong tập qualifying (mục 03),
+      tương thích ngược với <code>suggestion.py</code> mà không cần sửa file đó. Vẫn cần rà soát thêm các nơi khác
+      đang đọc <code>state.user_intent</code> trước khi migrate, phòng trường hợp có chỗ giả định sai khác.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Sáng kiến kiến trúc — cần ADR trước khi implement</span>
+  </footer>
+
+</div>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor: "#f7f0ea",
+      primaryTextColor: "#33291f",
+      primaryBorderColor: "#bb7c5f",
+      lineColor: "#a59a8e",
+      secondaryColor: "#f4f0eb",
+      tertiaryColor: "#ffffff",
+      fontFamily: "ui-monospace, monospace",
+      fontSize: "13px"
+    }
+  });
+</script>
+</body>
+</html>
