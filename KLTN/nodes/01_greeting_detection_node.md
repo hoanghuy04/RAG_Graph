@@ -18,8 +18,8 @@ GREETING_PATTERNS = [
 ]
 
 def check_greeting(user_query: str, history_len: int) -> bool:
-    if history_len > 1:
-        return False  # Chỉ kích hoạt ở lượt trò chuyện đầu tiên
+    if history_len != 0:
+        return False  # CHỈ kích hoạt ở lượt trò chuyện đầu tiên
     clean_query = user_query.strip().lower()
     return any(re.match(pattern, clean_query) for pattern in GREETING_PATTERNS)
 ```
@@ -29,8 +29,13 @@ def check_greeting(user_query: str, history_len: int) -> bool:
 if check_greeting(state.user_query, len(state.conversation_history)):
     return EndNode(result=GREETING_TEMPLATE_RESULT)
 else:
-    return EarlyRejectNode()
+    return SecurityContextExtractionNode()
 ```
+
+### Câu chào ở lượt thứ 2 trở đi
+Fast Path cố tình **không** bắt các lượt sau. Câu chào lúc đó đi tiếp vào luồng chính và được `MessageClassificationNode` (03) phân loại thành `social_chat` — đích xử lý tương đương template chào, nhưng không bỏ sót nội dung câu hỏi thật nếu người dùng viết *"Chào bot, cho em hỏi điều kiện học bổng"*.
+
+Vì vậy taxonomy intent **không có nhãn `greeting`**: trường hợp đó đã được xử lý trọn vẹn tại đây (lượt đầu) và tại `social_chat` (lượt sau).
 
 ---
 

@@ -8,7 +8,8 @@ template: |
   {response_style}
   {citation_rules}
   {prepared_context}
-  
+  {task_1}
+
   ## Chế Độ Hướng Dẫn Quy Trình Thủ Tục Học Vụ
   Câu hỏi của người dùng về thủ tục / quy trình học vụ. Hãy trình bày theo dạng **các bước tuần tự**:
   1. Đánh số thứ tự rõ ràng (Bước 1, Bước 2...).

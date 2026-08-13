@@ -64,6 +64,7 @@ Dữ liệu động từ Graph State (như metadata người dùng, tài liệu 
       context_chunks=formatted_chunks_string
   )
   ```
+> **Khối Nhiệm vụ đối chiếu (`{task_1}`) là chuỗi tĩnh, không cần format ở bước này.** Toàn bộ tri thức học vụ đã nằm trong `<academic_context>` của `{prepared_context}`, nên `task_1` chỉ chứa quy tắc xử lý, không chứa dữ liệu động. Đây là điểm khác biệt so với LISA — hệ đó nạp tri thức theo từng cặp metadata được người dùng chốt dần qua hội thoại nên `task_1` phải có các block con (`confirmation_section`, `information_need_section`) và phải format 2 lớp. KLTN lấy bối cảnh phân quyền trực tiếp từ JWT và truy xuất một khối tri thức duy nhất, nên không có vòng chốt metadata nào để tách block.
 
 ### Bước 2.2: Ráp các khối con vào Khung Sườn Chính (Main Structural Templates)
 Sau khi chuẩn bị xong tất cả các khối con dưới dạng chuỗi phẳng (flat string), hệ thống gom tất cả vào một dictionary `base_params`:
@@ -77,8 +78,11 @@ base_params = {
     "response_style": templates.response_style,
     "citation_rules": templates.citation_rules,
     "prepared_context": prepared_context_text,    # Khối con đã được điền thông tin ở Bước 2.1
+    "task_1": templates.task_1,                   # Chuỗi tĩnh, không có placeholder
 }
 ```
+
+> `{task_1}` chỉ có mặt ở các khung sườn đi qua RAG (`chat_single_intent`, `chat_procedure_steps`, `chat_multi_intent_synthesis`). Các khung không có `<academic_context>` — `chat_direct_llm`, `chat_calculation_result`, `chat_calendar_result`, `chat_ticket_fallback` — **không** chèn khối này, vì quy tắc "chỉ trả lời dựa trên văn bản đối chiếu được" không áp dụng khi không có văn bản nào được truy xuất.
 
 Hệ thống sẽ lựa chọn Khung sườn chính (Main Frame) tương ứng với luồng đi của Graph trong [main/](file:///Users/admin/Desktop/Hoang_Huy/self/Flow/KLTN/prompt_template/main) và gọi toán tử giải nén tham số `**base_params` để hoàn thiện:
 

@@ -50,7 +50,36 @@ class AcademicSecurityContext(BaseModel):
 ---
 
 ## 4. Graph Routing Logic
-Node này luôn chuyển tiếp sang Node tiếp theo mà không rẽ nhánh dựa trên điều kiện:
+Mặc định node chuyển tiếp sang bước phân loại ý định:
 ```python
 return MessageClassificationNode()
 ```
+
+---
+
+## 5. Clarification Guard (Nối Lại Ngữ Cảnh Đa Lượt)
+
+Đây là điểm rẽ nhánh **duy nhất** của node này, và nó tồn tại để bảo vệ luồng hỏi-lại-tham số của `CalculationNode`.
+
+**Vấn đề**: khi hệ thống hỏi *"Môn Vật lý của bạn mấy tín chỉ?"*, sinh viên trả lời *"2 tín chỉ ạ"*. Nếu chuỗi này đi vào `MessageClassificationNode`, nó là một câu ngắn không chứa câu hỏi → bị phân loại thành `social_chat` → trả về template xã giao, toàn bộ tham số đã thu thập ở lượt trước bị vứt bỏ.
+
+**Giải pháp**: nếu State còn mang một yêu cầu làm rõ chưa hoàn tất, bỏ qua phân loại và nối thẳng về node đã đặt câu hỏi:
+
+```python
+MAX_CLARIFICATION_RETRY = 2
+
+def route(state) -> str:
+    pending = state.pending_clarification
+    if pending and pending.retry_count < MAX_CLARIFICATION_RETRY:
+        return pending.origin_node          # VD: "CalculationNode"
+
+    if pending:                             # Đã hỏi quá số lần cho phép
+        state.pending_clarification = None  # Dọn state, tránh kẹt vòng lặp
+        logger.info("Clarification abandoned after %d tries", pending.retry_count)
+
+    return "MessageClassificationNode"
+```
+
+**Điều kiện thoát bắt buộc**: sau `MAX_CLARIFICATION_RETRY` lần hỏi mà vẫn thiếu tham số, `pending_clarification` bị xóa và lượt hiện tại quay về luồng phân loại bình thường. Không có điều kiện này, sinh viên sẽ bị kẹt vĩnh viễn trong vòng hỏi tham số và không thể chuyển sang câu hỏi khác.
+
+**Lưu ý bảo mật**: guard đặt **sau** khi `academic_security_context` đã được giải mã, không đặt trước. Mọi lượt — kể cả lượt trả lời bổ sung — đều phải mang bối cảnh phân quyền hợp lệ.

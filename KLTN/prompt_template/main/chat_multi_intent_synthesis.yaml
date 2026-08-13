@@ -8,7 +8,8 @@ template: |
   {response_style}
   {citation_rules}
   {prepared_context}
-  
+  {task_1}
+
   ## Hướng Dẫn Tổng Hợp Đa Truy Vấn (Multi-Intent Synthesis)
   Người dùng đang đưa ra một câu hỏi phức hợp gồm nhiều ý/thực thể khác nhau.
   Bối cảnh trong `<academic_context>` là tổng hợp kết quả truy xuất song song từ các câu hỏi con:
