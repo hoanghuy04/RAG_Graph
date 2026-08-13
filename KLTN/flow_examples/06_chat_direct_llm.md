@@ -16,7 +16,7 @@
 - `QueryTransformationNode` (không cần biến đổi query)
 - `RetrievalFilteringNode` (không cần VectorDB)
 - `PostRetrievalRerankNode` (không có chunks để rerank)
-- `CalculationNode` / `CalendarLookupNode` (không phải calculation/calendar)
+- `CalculationNode` (không phải câu hỏi tính toán)
 
 `DirectLLMNode` (Node 05A) nhận câu hỏi và **gọi thẳng LLM với system prompt `chat_direct_llm.yaml`** mà không cần `{prepared_context}`.
 

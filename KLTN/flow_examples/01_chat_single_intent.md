@@ -1,3 +1,5 @@
+> **⚠️ Cập nhật gộp flow (2026-08)**: `chat_academic_default.yaml` và `chat_single_intent.yaml` đã bị gộp thành 1 template duy nhất `main/chat_academic_advisory.yaml` (dùng chung cho cả Advisory/Procedure/Document/Calendar). Node 06 giờ là entry point chung cho 4 intent, không chỉ Advisory. Chi tiết: [`../missing_metadata_clarification_design.md`](../missing_metadata_clarification_design.md), [`../nodes/06_query_transformation_node.md`](../nodes/06_query_transformation_node.md). Nội dung bên dưới giữ nguyên để tham chiếu lịch sử về cách 2 biến thể template cũ khác nhau.
+
 # Luồng: `chat_academic_default` vs `chat_single_intent` — RAG Đơn Ý
 
 ## Tại Sao 2 Template Này Nằm Trong 1 File?

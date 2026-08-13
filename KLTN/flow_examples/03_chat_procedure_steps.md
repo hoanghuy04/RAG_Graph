@@ -1,3 +1,5 @@
+> **⚠️ Cập nhật gộp flow (2026-08)**: `chat_procedure_steps.yaml` đã bị xoá, gộp vào `main/chat_academic_advisory.yaml` dùng chung cho cả Advisory/Procedure/Document/Calendar. Định dạng "các bước tuần tự" mô tả bên dưới nay là 1 rule (CÂU HỎI QUY TRÌNH/THỦ TỤC) trong [`../prompt_template/common/academic_domain_rules.yaml`](../prompt_template/common/academic_domain_rules.yaml), không còn là template riêng. Chi tiết: [`../missing_metadata_clarification_design.md`](../missing_metadata_clarification_design.md).
+
 # Luồng 4: `chat_procedure_steps` — Hướng Dẫn Quy Trình Thủ Tục
 
 ## Query Ví Dụ

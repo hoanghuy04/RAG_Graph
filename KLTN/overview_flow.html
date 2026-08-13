@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Vòng Lặp Học Song Hành</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* ============ TOKENS — light (default) ============ */
+  :root{
+    --ink:        #182234;
+    --ink-soft:   #4A5468;
+    --paper:      #F1F3F8;
+    --surface:    #FFFFFF;
+    --surface-2:  #FAFBFD;
+    --rule:       #D8DEE9;
+    --rule-soft:  #E7EBF2;
+
+    --seal:       #8C3038;   /* advisory / citation / garnet-seal accent */
+    --seal-soft:  #F4E4E3;
+    --system:     #2E5C82;   /* orchestration / deterministic nodes */
+    --system-soft:#E4EDF4;
+    --pending:    #A9761E;   /* missing-data / awaiting clarification */
+    --pending-soft:#F6EBD4;
+    --resolved:   #2E6B49;   /* resolved / final state */
+    --resolved-soft:#E1EFE6;
+
+    --user-bubble:    #1F3550;
+    --user-bubble-tx: #F4F7FB;
+    --bot-bubble:     #FFFFFF;
+    --bot-bubble-tx:  #182234;
+
+    --shadow: 0 1px 2px rgba(24,34,52,.06), 0 6px 20px -8px rgba(24,34,52,.16);
+  }
+
+  /* ============ TOKENS — system dark (only when no explicit choice) ============ */
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:        #E8ECF4;
+      --ink-soft:   #A6B0C4;
+      --paper:      #10151F;
+      --surface:    #171D2A;
+      --surface-2:  #1C2331;
+      --rule:       #2B3345;
+      --rule-soft:  #232B3A;
+
+      --seal:       #D98089;
+      --seal-soft:  #2E1A1D;
+      --system:     #7FB0DA;
+      --system-soft:#16273A;
+      --pending:    #E0AE5C;
+      --pending-soft:#2E260F;
+      --resolved:   #7FC79D;
+      --resolved-soft:#122A1D;
+
+      --user-bubble:    #2A4467;
+      --user-bubble-tx: #F1F5FA;
+      --bot-bubble:     #1C2331;
+      --bot-bubble-tx:  #E8ECF4;
+
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -8px rgba(0,0,0,.45);
+    }
+  }
+
+  /* ============ TOKENS — explicit dark override ============ */
+  :root[data-theme="dark"]{
+    --ink:        #E8ECF4;
+    --ink-soft:   #A6B0C4;
+    --paper:      #10151F;
+    --surface:    #171D2A;
+    --surface-2:  #1C2331;
+    --rule:       #2B3345;
+    --rule-soft:  #232B3A;
+
+    --seal:       #D98089;
+    --seal-soft:  #2E1A1D;
+    --system:     #7FB0DA;
+    --system-soft:#16273A;
+    --pending:    #E0AE5C;
+    --pending-soft:#2E260F;
+    --resolved:   #7FC79D;
+    --resolved-soft:#122A1D;
+
+    --user-bubble:    #2A4467;
+    --user-bubble-tx: #F1F5FA;
+    --bot-bubble:     #1C2331;
+    --bot-bubble-tx:  #E8ECF4;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -8px rgba(0,0,0,.45);
+  }
+
+  /* ============ BASE ============ */
+  *{box-sizing:border-box;}
+  html{-webkit-font-smoothing:antialiased;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.65;
+  }
+  ::selection{background:var(--seal-soft); color:var(--seal);}
+  a{color:var(--system);}
+  a:focus-visible, button:focus-visible, .chip:focus-visible{
+    outline:2px solid var(--system); outline-offset:2px; border-radius:4px;
+  }
+
+  .page{max-width:920px; margin:0 auto; padding:3rem 1.5rem 6rem;}
+
+  /* ============ MASTHEAD ============ */
+  .masthead{
+    display:flex; flex-direction:column; gap:.6rem;
+    padding-bottom:2rem; margin-bottom:2.5rem;
+    border-bottom:1px solid var(--rule);
+  }
+  .eyebrow{
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--seal); font-weight:600;
+  }
+  h1{
+    font-family:"Iowan Old Style","Palatino Linotype","Sitka Text",Georgia,"Times New Roman",serif;
+    font-size:clamp(1.7rem,3.4vw,2.35rem);
+    font-weight:600; margin:0; color:var(--ink);
+    text-wrap:balance; letter-spacing:.005em;
+  }
+  .lede{
+    max-width:62ch; color:var(--ink-soft); font-size:1.02rem; margin:0;
+  }
+  .lede code{font-size:.92em;}
+
+  .legend{
+    display:flex; flex-wrap:wrap; gap:.5rem 1.1rem; margin-top:.4rem;
+    font-size:.82rem; color:var(--ink-soft);
+  }
+  .legend span{display:inline-flex; align-items:center; gap:.4rem;}
+  .dot{width:.55em; height:.55em; border-radius:50%; flex:none;}
+  .dot.system{background:var(--system);}
+  .dot.seal{background:var(--seal);}
+  .dot.pending{background:var(--pending);}
+  .dot.resolved{background:var(--resolved);}
+
+  /* ============ TURN SECTION ============ */
+  .turn{position:relative; margin-bottom:3.2rem;}
+  .turn-head{
+    display:flex; align-items:baseline; gap:.7rem; margin-bottom:1.2rem;
+  }
+  .turn-num{
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    font-size:1.9rem; font-weight:600; color:var(--seal); line-height:1;
+  }
+  .turn-title{
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    font-size:1.25rem; font-weight:600; text-wrap:balance;
+  }
+  .turn-sub{
+    font-size:.86rem; color:var(--ink-soft); margin:.15rem 0 0;
+  }
+
+  /* ---- Frontstage: chat mock ---- */
+  .frontstage-label, .backstage-label{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.7rem; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-soft); margin:1.6rem 0 .6rem; display:flex; align-items:center; gap:.5rem;
+  }
+  .frontstage-label::after, .backstage-label::after{
+    content:""; flex:1; height:1px; background:var(--rule-soft);
+  }
+
+  .chat{
+    display:flex; flex-direction:column; gap:.7rem;
+    background:var(--surface-2); border:1px solid var(--rule-soft);
+    border-radius:14px; padding:1.1rem 1.1rem 1.2rem;
+  }
+  .bubble{
+    max-width:82%; padding:.65rem .95rem; border-radius:14px; font-size:.94rem;
+    box-shadow:var(--shadow);
+  }
+  .bubble p{margin:0 0 .5rem;}
+  .bubble p:last-child{margin-bottom:0;}
+  .bubble.user{
+    align-self:flex-end; background:var(--user-bubble); color:var(--user-bubble-tx);
+    border-bottom-right-radius:4px;
+  }
+  .bubble.bot{
+    align-self:flex-start; background:var(--bot-bubble); color:var(--bot-bubble-tx);
+    border:1px solid var(--rule-soft); border-bottom-left-radius:4px;
+  }
+  .bubble .cite{color:var(--seal); font-weight:600; font-size:.85em;}
+  .bubble .q{font-weight:600;}
+
+  .choices{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.7rem;}
+  .chip{
+    font:inherit; font-size:.84rem; font-weight:600;
+    padding:.4rem .85rem; border-radius:999px;
+    border:1.5px solid var(--pending); background:var(--pending-soft); color:var(--pending);
+    cursor:default;
+  }
+  .chip.picked{
+    background:var(--resolved-soft); border-color:var(--resolved); color:var(--resolved);
+  }
+  .chip.picked::before{content:"✓ "; }
+
+  /* ---- Backstage: node ledger ---- */
+  .ledger{
+    position:relative; padding-left:2.1rem; margin-top:.6rem;
+    border-left:1.5px solid var(--rule);
+  }
+  .node{position:relative; padding:0 0 1.15rem 1.1rem;}
+  .node:last-child{padding-bottom:0;}
+  .node::before{
+    content:attr(data-n);
+    position:absolute; left:-2.72rem; top:0;
+    width:1.7rem; height:1.7rem; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.72rem; font-weight:700;
+    background:var(--surface); border:1.5px solid var(--rule); color:var(--ink-soft);
+  }
+  .node.system::before{border-color:var(--system); color:var(--system);}
+  .node.seal::before{border-color:var(--seal); color:var(--seal);}
+  .node.pending::before{border-color:var(--pending); color:var(--pending); background:var(--pending-soft);}
+  .node.resolved::before{border-color:var(--resolved); color:var(--resolved); background:var(--resolved-soft);}
+
+  .node-name{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.86rem; font-weight:600; color:var(--ink);
+  }
+  .node-name .badge{
+    font-size:.68rem; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+    padding:.1rem .45rem; border-radius:5px; margin-left:.5rem;
+  }
+  .badge.system{background:var(--system-soft); color:var(--system);}
+  .badge.seal{background:var(--seal-soft); color:var(--seal);}
+  .badge.pending{background:var(--pending-soft); color:var(--pending);}
+  .badge.resolved{background:var(--resolved-soft); color:var(--resolved);}
+
+  .node-desc{font-size:.88rem; color:var(--ink-soft); margin:.3rem 0 0; max-width:64ch;}
+  .node-desc code{font-size:.87em;}
+
+  pre{
+    margin:.55rem 0 0; padding:.7rem .85rem; border-radius:9px;
+    background:var(--surface); border:1px solid var(--rule-soft);
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    font-size:.78rem; line-height:1.55; color:var(--ink);
+    overflow-x:auto; white-space:pre;
+  }
+  code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    background:var(--surface); border:1px solid var(--rule-soft);
+    padding:.1em .35em; border-radius:4px; font-size:.86em;
+  }
+  pre code{background:none; border:none; padding:0;}
+  .jkey{color:var(--system);}
+  .jstr{color:var(--seal);}
+
+  /* ---- Bridge between turns ---- */
+  .bridge{
+    display:flex; align-items:center; gap:.8rem; margin:1.6rem 0 2.6rem;
+    padding-left:.1rem;
+  }
+  .bridge-line{flex:1; height:1px; background:repeating-linear-gradient(90deg, var(--pending) 0 6px, transparent 6px 11px);}
+  .bridge-text{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.76rem; color:var(--pending); white-space:nowrap;
+    background:var(--pending-soft); padding:.3rem .7rem; border-radius:999px;
+    border:1px solid var(--pending);
+  }
+
+  /* ============ FOOTER: file index ============ */
+  .colophon{
+    margin-top:3.5rem; padding-top:1.8rem; border-top:1px solid var(--rule);
+  }
+  .colophon h2{
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    font-size:1.05rem; margin:0 0 1rem;
+  }
+  .filegrid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:.9rem 1.4rem; font-size:.84rem;
+  }
+  .filegrid dt{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    color:var(--ink); font-weight:600; margin:0;
+  }
+  .filegrid dd{margin:.15rem 0 0; color:var(--ink-soft);}
+
+  @media (max-width:600px){
+    .page{padding:2rem 1rem 4rem;}
+    .bubble{max-width:94%;}
+    .ledger{padding-left:1.6rem;}
+    .node::before{left:-2.25rem; width:1.5rem; height:1.5rem; font-size:.65rem;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <span class="eyebrow">KLTN Academic Graph — 1 luồng, 2 lượt hội thoại</span>
+    <h1>Vòng Lặp Học Song Hành</h1>
+    <p class="lede">
+      Một sinh viên hỏi 2 việc cùng lúc — điều kiện học song hành, và học phí
+      chênh lệch giữa hai ngành. Hệ thống decompose thành 3 truy vấn con
+      (<strong>multi-intent</strong>), trả lời được 2/3 ngay từ dữ liệu RAG
+      (<strong>advisory</strong>), nhưng phát hiện ý còn lại phụ thuộc một
+      thuộc tính chưa biết (<strong>missing metadata</strong>) — nên dừng lại
+      đúng 1 câu hỏi trước khi chốt (<strong>ask user choice</strong>). Toàn bộ
+      diễn ra trong đúng 2 lượt.
+    </p>
+    <div class="legend">
+      <span><i class="dot system"></i>Node điều phối / deterministic</span>
+      <span><i class="dot seal"></i>Node RAG / nội dung quy chế</span>
+      <span><i class="dot pending"></i>Phát hiện thiếu metadata</span>
+      <span><i class="dot resolved"></i>Đã giải quyết / kết thúc</span>
+    </div>
+  </header>
+
+  <!-- ============ TURN 1 ============ -->
+  <section class="turn">
+    <div class="turn-head">
+      <span class="turn-num">1</span>
+      <div>
+        <div class="turn-title">Lượt 1 — Hỏi gộp, vướng ở một nhánh</div>
+        <p class="turn-sub">MessageClassification gắn <code>routing_mode="MULTI"</code> vì câu hỏi có 2 ý tách biệt.</p>
+      </div>
+    </div>
+
+    <p class="frontstage-label">Sinh viên thấy</p>
+    <div class="chat">
+      <div class="bubble user">
+        <p>Cho em hỏi điều kiện đăng ký học song hành là gì, và học phí ngành
+        Công nghệ thông tin với Kế toán chênh nhau bao nhiêu ạ?</p>
+      </div>
+      <div class="bubble bot">
+        <p>Về học phí: CNTT <strong>520.000đ</strong>/tín chỉ <span class="cite">[2]</span>,
+        Kế toán <strong>480.000đ</strong>/tín chỉ <span class="cite">[3]</span> — chênh
+        40.000đ/tín chỉ.</p>
+        <p>Về điều kiện học song hành, quy định hiện khác nhau tuỳ hệ đào tạo <span class="cite">[1]</span>.</p>
+        <p class="q">Bạn đang học theo hệ đào tạo nào ạ?</p>
+        <div class="choices">
+          <span class="chip">Chính quy</span>
+          <span class="chip">Liên thông</span>
+          <span class="chip">Vừa làm vừa học</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node system" data-n="03">
+        <div class="node-name">MessageClassificationNode <span class="badge system">deterministic input</span></div>
+        <div class="node-desc"><code>primary_intent: "academic_advisory"</code>, <code>routing_mode: "MULTI"</code> — câu hỏi mang 2 ý tách biệt.</div>
+      </div>
+      <div class="node system" data-n="04">
+        <div class="node-name">IntentRoutingNode <span class="badge system">router</span></div>
+        <div class="node-desc">→ <code>QueryTransformationNode(mode="MULTI")</code></div>
+      </div>
+      <div class="node seal" data-n="06">
+        <div class="node-name">QueryTransformationNode <span class="badge seal">decompose</span></div>
+        <div class="node-desc">Phân rã bằng <code>multi_query_decomposer.yaml</code> thành 3 sub-query độc lập:</div>
+<pre>SQ1  "Quy định điều kiện đăng ký học song hành hai chương trình đào tạo"
+SQ2  "Định mức học phí theo tín chỉ ngành Công nghệ thông tin, 2024-2025"
+SQ3  "Định mức học phí theo tín chỉ ngành Kế toán, 2024-2025"</pre>
+      </div>
+      <div class="node seal" data-n="10">
+        <div class="node-name">RetrievalFilteringNode <span class="badge seal">VectorDB ×3</span></div>
+        <div class="node-desc"><code>asyncio.gather()</code> chạy song song cả 3 sub-query, mỗi nhóm rerank riêng ở node 11 — cả 3 đều đạt <code>score ≥ 0.70</code>.</div>
+      </div>
+      <div class="node pending" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge pending">task_1 phát hiện Type B</span></div>
+        <div class="node-desc">
+          Đối chiếu từng sub-query độc lập: SQ2, SQ3 đủ căn cứ, trả thẳng. Riêng
+          SQ1 — văn bản chia 2 nhánh theo <strong>hệ đào tạo</strong>, thuộc tính
+          này không có trong <code>academic_metadata</code> lẫn câu hỏi gốc.
+        </div>
+<pre>SQ1 chunk: "Điều 5: Sinh viên hệ <span class="jstr">CHÍNH QUY</span> được đăng ký học
+song hành khi tích lũy ≥30 TC, GPA≥2.50 [1]. Sinh viên hệ
+<span class="jstr">LIÊN THÔNG</span> và <span class="jstr">VLVH</span> không thuộc diện áp dụng."</pre>
+        <div class="node-desc">task_2 chỉ hỏi <strong>đúng 1 field</strong> cho phần còn thiếu, KHÔNG chặn 2 câu trả lời đã đủ căn cứ ở trên.</div>
+      </div>
+      <div class="node pending" data-n="✓">
+        <div class="node-name">collect_pending_clarification() <span class="badge pending">ghi State</span></div>
+<pre>{
+  <span class="jkey">"origin_node"</span>: <span class="jstr">"QueryTransformationNode"</span>,
+  <span class="jkey">"missing_field"</span>: <span class="jstr">"training_type"</span>,
+  <span class="jkey">"options"</span>: [<span class="jstr">"chinh_quy"</span>, <span class="jstr">"lien_thong"</span>, <span class="jstr">"vlvh"</span>],
+  <span class="jkey">"retry_count"</span>: 0
+}</pre>
+        <div class="node-desc">SQ2/SQ3 đã trả lời trọn vẹn ở lượt này — chỉ SQ1 còn treo, chờ lượt sau.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="bridge">
+    <span class="bridge-text">state.pending_clarification còn treo → chờ user</span>
+    <span class="bridge-line"></span>
+  </div>
+
+  <!-- ============ TURN 2 ============ -->
+  <section class="turn">
+    <div class="turn-head">
+      <span class="turn-num">2</span>
+      <div>
+        <div class="turn-title">Lượt 2 — Trả lời, chốt luôn phần còn thiếu</div>
+        <p class="turn-sub">Clarification Guard (node 02) nối thẳng về node 06 — bỏ qua phân loại intent.</p>
+      </div>
+    </div>
+
+    <p class="frontstage-label">Sinh viên thấy</p>
+    <div class="chat">
+      <div class="bubble user">
+        <p>Chính quy ạ.</p>
+      </div>
+      <div class="bubble bot">
+        <p>Bạn thuộc hệ <strong>chính quy</strong> nên đủ điều kiện đăng ký học
+        song hành nếu đã tích lũy từ <strong>30 tín chỉ</strong> trở lên và
+        GPA đạt <strong>2.50</strong> trở lên <span class="cite">[1]</span>.</p>
+        <p>Về học phí: CNTT <strong>520.000đ</strong>/tín chỉ <span class="cite">[2]</span>,
+        Kế toán <strong>480.000đ</strong>/tín chỉ <span class="cite">[3]</span>.</p>
+        <div class="choices">
+          <span class="chip picked">Chính quy</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node system" data-n="02">
+        <div class="node-name">SecurityContextExtraction — Clarification Guard <span class="badge system">bypass 01 &amp; 03</span></div>
+        <div class="node-desc">
+          <code>retry_count(0) &lt; MAX(2)</code> → tăng lên 1 → route thẳng về
+          <code>pending.origin_node</code>. Nếu không bypass, câu trả lời ngắn
+          "Chính quy ạ" sẽ bị 03 phân loại nhầm thành <code>social_chat</code>,
+          mất hết ngữ cảnh câu hỏi ban đầu.
+        </div>
+      </div>
+      <div class="node seal" data-n="06">
+        <div class="node-name">QueryTransformationNode (lượt 2) <span class="badge seal">merge &amp; re-run SQ1 riêng</span></div>
+        <div class="node-desc">
+          Chỉ SQ1 còn treo — ghép "hệ chính quy" vào đúng sub-query đó, KHÔNG
+          chạy lại SQ2/SQ3 (đã resolved, không đổi).
+        </div>
+<pre>SQ1' "Quy định điều kiện đăng ký học song hành dành cho
+      sinh viên hệ chính quy"</pre>
+      </div>
+      <div class="node seal" data-n="10">
+        <div class="node-name">RetrievalFilteringNode <span class="badge seal">retrieval lại, chỉ SQ1</span></div>
+        <div class="node-desc">Truy vấn cụ thể hơn → chunk trả về giờ chỉ còn đúng 1 nhánh áp dụng.</div>
+      </div>
+      <div class="node resolved" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge resolved">task_1: hết nhánh mơ hồ</span></div>
+        <div class="node-desc">
+          Không còn thuộc tính nào chưa biết → <strong>không</strong> kích hoạt
+          task_2. Gộp lại cả 3 ý (SQ1 mới giải quyết + SQ2/SQ3 giữ nguyên) vào
+          1 câu trả lời cuối cùng, đủ trích dẫn <code>[1][2][3]</code>.
+        </div>
+      </div>
+      <div class="node resolved" data-n="✓">
+        <div class="node-name">collect_pending_clarification() <span class="badge resolved">xoá State</span></div>
+        <div class="node-desc">Không còn khối <code>ask_user_choice</code> trong response → <code>state.pending_clarification = None</code>. Kết thúc vòng hỏi lại.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="colophon">
+    <h2>File liên quan</h2>
+    <dl class="filegrid">
+      <div>
+        <dt>nodes/06_query_transformation_node.md</dt>
+        <dd>Entry point flow Advisory hợp nhất — MULTI mode, điểm resume của Type B.</dd>
+      </div>
+      <div>
+        <dt>prompt_template/common/task_1.yaml</dt>
+        <dd>Rule "Phát hiện nhánh phụ thuộc thuộc tính sinh viên" — nơi Type B lộ ra.</dd>
+      </div>
+      <div>
+        <dt>prompt_template/common/task_2.yaml</dt>
+        <dd>Đặt đúng 1 câu hỏi cuối cùng, không chặn các ý đã đủ căn cứ.</dd>
+      </div>
+      <div>
+        <dt>prompt_template/common/ask_user_choice_guide.yaml</dt>
+        <dd>Quy tắc sinh JSON <code>ask_user_choice</code> từ nhãn nhánh trong văn bản.</dd>
+      </div>
+      <div>
+        <dt>nodes/02_security_context_extraction_node.md</dt>
+        <dd>Clarification Guard — bypass 01/03, tăng <code>retry_count</code>.</dd>
+      </div>
+      <div>
+        <dt>nodes/12_generation_synthesis_node.md</dt>
+        <dd>Mục 5 — Response Post-Processing, thu thập <code>pending_clarification</code>.</dd>
+      </div>
+      <div>
+        <dt>missing_metadata_clarification_design.md</dt>
+        <dd>Thiết kế đầy đủ Type A (checklist tĩnh) vs Type B (tự phát hiện).</dd>
+      </div>
+    </dl>
+  </footer>
+
+</div>
+</body>
+</html>

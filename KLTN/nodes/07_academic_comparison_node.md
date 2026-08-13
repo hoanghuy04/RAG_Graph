@@ -1,7 +1,7 @@
 # 07. AcademicComparisonNode (Phân Tích So Sánh Học Vụ)
 
 ## 1. Mạch Hoạt Động & Vai Trò Trong Graph
-`AcademicComparisonNode` là một **LLM Agent Node** hoạt động ở **Tier 5 (Parallel RAG)**. Node này chịu trách nhiệm trích xuất các thực thể và tiêu chí so sánh từ câu hỏi của sinh viên, sau đó tự động sinh ra các sub-query song song để gửi tới tầng tìm kiếm.
+`AcademicComparisonNode` là một **LLM Agent Node** hoạt động ở **Tier 4 (Parallel RAG)**. Node này chịu trách nhiệm trích xuất các thực thể và tiêu chí so sánh từ câu hỏi của sinh viên, sau đó tự động sinh ra các sub-query song song để gửi tới tầng tìm kiếm.
 
 Sự khác biệt với `multi_query_decomposer` là node này tập trung hoàn toàn vào việc phân tích đối sánh (Comparison) để chuẩn bị định dạng hiển thị dạng bảng (Comparison Table) ở tầng Generation.
 

@@ -12,10 +12,9 @@ Hệ thống Graph được xây dựng theo nguyên tắc **"Chi phí thấp nh
 | **Tier 0 — Fast Path** | Chào hỏi, xã giao, khen ngợi | Regex / Template tĩnh, không gọi LLM | 🟢 Gần 0 |
 | **Tier 1 — Direct LLM** | Kiến thức phổ thông đơn giản (1+1, thủ đô VN) | LLM trả lời trực tiếp, không RAG | 🟡 Thấp |
 | **Tier 2 — Calculation** | Tính GPA, học phí, số tín chỉ tích lũy | Calculator Tool + LLM (không cần VectorDB) | 🟡 Thấp |
-| **Tier 3 — Calendar Lookup** | Lịch học, lịch thi, thời hạn đăng ký môn | Calendar DB Lookup + LLM | 🟡 Thấp |
-| **Tier 4 — Single RAG** | Hỏi 1 quy chế, 1 thủ tục cụ thể | HyDE + Dense/Sparse Retrieval + Rerank | 🔶 Trung bình |
-| **Tier 5 — Parallel RAG** | So sánh 2 ngành, câu hỏi đa chiều phức tạp | Multi-Query Fan-out + Fusion + Rerank + Synthesis | 🔴 Cao |
-| **Tier 6 — Ticket Fallback** | Không tìm thấy tri thức vượt ngưỡng | Fallback + CTA Ticket Hỗ Trợ | 🟢 Gần 0 |
+| **Tier 3 — Single RAG (Flow Advisory hợp nhất)** | Hỏi 1 quy chế, 1 thủ tục, 1 hướng dẫn giấy tờ, 1 mốc lịch cụ thể | HyDE / Procedure / Document mode + Dense/Sparse Retrieval + Rerank | 🔶 Trung bình |
+| **Tier 4 — Parallel RAG** | So sánh 2 ngành, câu hỏi đa chiều phức tạp | Multi-Query Fan-out + Fusion + Rerank + Synthesis | 🔴 Cao |
+| **Tier 5 — Ticket Fallback** | Không tìm thấy tri thức vượt ngưỡng | Fallback + CTA Ticket Hỗ Trợ | 🟢 Gần 0 |
 
 ---
 
@@ -29,10 +28,9 @@ Hệ thống Graph được xây dựng theo nguyên tắc **"Chi phí thấp nh
 | 04 | `IntentRoutingNode` | Deterministic (Logic Router) | ❌ | ❌ |
 | 05A | `DirectLLMNode` | LLM trực tiếp | ✅ | ❌ |
 | 05B | `OffTopicRejectNode` | Deterministic + Template | ❌ | ❌ |
-| 06 | `QueryTransformationNode` | LLM Agent (HyDE / Multi-query) | ✅ | ❌ |
+| 06 | `QueryTransformationNode` | LLM Agent (HyDE / Multi-query / Procedure / Document) — **entry point flow Advisory hợp nhất** (advisory/procedure/document/calendar, đều qua VectorDB) | ✅ | ❌ |
 | 07 | `AcademicComparisonNode` | LLM Agent | ✅ | ❌ |
 | 08 | `CalculationNode` | Calculator Tool + LLM | ✅ Tool | ❌ |
-| 09 | `CalendarLookupNode` | Calendar DB + LLM | ✅ | ❌ |
 | 10 | `RetrievalFilteringNode` | VectorDB (Pre-filter + Hybrid + RRF) | ❌ | ✅ |
 | 11 | `PostRetrievalRerankNode` | Cross-Encoder + Score Threshold | ❌ | ✅ |
 | 12 | `GenerationSynthesisNode` | LLM Agent (Fan-in) | ✅ | ✅ |
@@ -60,12 +58,9 @@ graph TD
     G04 -->|"social_chat"| EndSocial(["😊 END — Template Xã Giao\n(Cảm ơn, OK, Tuyệt)"])
     G04 -->|"general_knowledge"| G05A["05A. DirectLLMNode\n(No RAG — Kiến thức phổ thông)"]
     G04 -->|"off_topic"| G05B["05B. OffTopicRejectNode\n(Từ chối khéo léo)"]
-    G04 -->|"academic_advisory"| G06["06. QueryTransformationNode\n(SINGLE / MULTI mode)"]
+    G04 -->|"academic_advisory / academic_procedure / academic_document / academic_calendar\n(Flow Advisory hợp nhất)"| G06["06. QueryTransformationNode\n(HyDE / Multi-query / Procedure / Document)"]
     G04 -->|"academic_comparison"| G07["07. AcademicComparisonNode\n(Trích xuất 2+ thực thể so sánh)"]
     G04 -->|"academic_calculation"| G08["08. CalculationNode\n(Calculator Tool: GPA / Học phí / Tín chỉ)"]
-    G04 -->|"academic_procedure"| G06
-    G04 -->|"academic_calendar"| G09["09. CalendarLookupNode\n(Calendar DB / Academic Schedule)"]
-    G04 -->|"academic_document"| G06
 
     %% ========== TIER 1 EXITS ==========
     G05A --> EndDirect(["💡 END — Câu trả lời Trực tiếp (No RAG)"])
@@ -75,13 +70,8 @@ graph TD
     G08 -->|"Chỉ tính toán thuần túy"| G12["12. GenerationSynthesisNode"]
     G08 -->|"Cần tra cứu quy chế bổ sung"| G06
 
-    %% ========== TIER 3: CALENDAR ==========
-    G09 -->|"Có dữ liệu lịch"| G12
-    G09 -->|"Không có dữ liệu lịch"| G06
-
-    %% ========== TIER 4 & 5: RAG PIPELINE ==========
-    G06 -->|"SINGLE — HyDE Hypothetical Doc"| G10["10. RetrievalFilteringNode\n(Pre-filter + Dense + BM25 + RRF)"]
-    G06 -->|"MULTI — Sub-Query Decomposition"| G10
+    %% ========== TIER 4 & 5: RAG PIPELINE (bao gồm cả Calendar — không có DB riêng) ==========
+    G06 -->|"HyDE / Multi-query / Procedure / Document"| G10["10. RetrievalFilteringNode\n(Pre-filter + Dense + BM25 + RRF)"]
 
     G07 -->|"Parallel Fan-out Sub-queries"| G10
 
@@ -160,14 +150,16 @@ ROUTING_MAP = {
     "social_chat":           -> EndSocialTemplate,
     "general_knowledge":     -> DirectLLMNode,
     "off_topic":             -> OffTopicRejectNode,
-    "academic_advisory":     -> QueryTransformationNode(mode="SINGLE" or "MULTI"),
+    "academic_advisory":     -> QueryTransformationNode(mode="SINGLE" or "MULTI"),   # Flow Advisory hợp nhất
     "academic_comparison":   -> AcademicComparisonNode,
     "academic_calculation":  -> CalculationNode,
-    "academic_procedure":    -> QueryTransformationNode(mode="PROCEDURE"),
-    "academic_calendar":     -> CalendarLookupNode,
-    "academic_document":     -> QueryTransformationNode(mode="DOCUMENT"),
+    "academic_procedure":    -> QueryTransformationNode(mode="PROCEDURE"),           # Flow Advisory hợp nhất
+    "academic_calendar":     -> QueryTransformationNode(mode="SINGLE"),               # Flow Advisory hợp nhất — không có DB lịch riêng, dùng chung HyDE+RAG như advisory
+    "academic_document":     -> QueryTransformationNode(mode="DOCUMENT"),            # Flow Advisory hợp nhất
 }
 ```
+
+> **Cập nhật gộp flow (2026-08)**: cả 4 intent `academic_advisory` / `academic_procedure` / `academic_calendar` / `academic_document` nay dùng chung một đích routing (`QueryTransformationNode`) thay vì `academic_calendar` có node riêng (`CalendarLookupNode`) như trước. KLTN không quản lý DB lịch học riêng — lịch chỉ là văn bản chung (lịch tổng quan cả năm) nằm trong VectorDB như mọi tài liệu advisory khác, nên dùng chung pipeline HyDE + RAG, không có bước tra DB riêng — xem [`06_query_transformation_node.md`](06_query_transformation_node.md).
 
 ---
 
@@ -245,17 +237,15 @@ Ví dụ mình có thể giúp bạn:
 
 ---
 
-### 4.9 `CalendarLookupNode` — Calendar DB + LLM
-**Vai trò**: Tra cứu dữ liệu lịch học vụ chính thức từ Calendar Database (không phải VectorDB).
+### 4.9 ~~`CalendarLookupNode`~~ — Gộp hoàn toàn vào flow Advisory (06), không có DB riêng
+> **Đã gộp (2026-08)**: node này đã bị xoá. KLTN không quản lý DB lịch học của sinh viên — việc quản lý lịch học cụ thể theo lớp đã có hệ thống khác của Nhà trường đảm nhiệm, ngoài phạm vi đồ án. Phạm vi KLTN chỉ trích xuất **lịch tổng quan cả năm học** từ các văn bản/thông báo chung trong VectorDB — về bản chất là một dạng câu hỏi advisory bình thường, dùng chung pipeline HyDE + RAG ở node 06, không có Tool/DB riêng, không có field `calendar_data`. Xem [`06_query_transformation_node.md`](06_query_transformation_node.md).
 
-**Loại dữ liệu lịch**:
-- Ngày bắt đầu / kết thúc đăng ký môn học.
+**Các loại lịch được hỗ trợ** (dữ liệu lấy từ văn bản/thông báo trong VectorDB, không phải DB riêng):
+- Ngày bắt đầu / kết thúc đăng ký học phần.
 - Lịch thi (thi giữa kỳ, cuối kỳ).
 - Thời hạn nộp học phí.
 - Lịch xét học bổng, cảnh báo học vụ.
 - Ngày nghỉ lễ, tuần sinh hoạt công dân.
-
-**Fallback**: Nếu Calendar DB không có dữ liệu → chuyển sang `QueryTransformationNode` để thử tìm trong VectorDB lịch được scan vào.
 
 ---
 
@@ -283,15 +273,14 @@ Ví dụ mình có thể giúp bạn:
 ### 4.12 `GenerationSynthesisNode` — Fan-in LLM Agent
 **Vai trò**: Gom toàn bộ ngữ cảnh từ các nhánh song song, sinh câu trả lời mạch lạc kèm trích dẫn.
 
-**Lắp ghép prompt động dựa theo luồng**:
+**Lắp ghép prompt động dựa theo luồng** *(cập nhật gộp flow 2026-08 — xem [`06_query_transformation_node.md`](06_query_transformation_node.md))*:
 | Luồng đến | Template chính | Có bảng so sánh? |
 | :--- | :--- | :--- |
-| Single Advisory | `chat_single_intent.yaml` | ❌ |
+| Advisory hợp nhất (Advisory / Procedure / Document / Calendar — cả 4 đều qua cùng VectorDB) | `chat_academic_advisory.yaml` | ❌ (Calendar tự format ngày, Procedure/Document tự format bước — quy tắc chung trong `academic_domain_rules.yaml`) |
 | Multi-Intent / Comparison | `chat_multi_intent_synthesis.yaml` | ✅ |
 | Calculation | `chat_calculation_result.yaml` | ❌ (Hiện công thức) |
-| Calendar | `chat_calendar_result.yaml` | ❌ |
-| Procedure | `chat_procedure_steps.yaml` | ❌ (Danh sách bước) |
-| Document | `chat_document_guide.yaml` | ❌ |
+
+> `chat_single_intent.yaml`, `chat_calendar_result.yaml`, `chat_procedure_steps.yaml`, `chat_document_guide.yaml` (4 template riêng lẻ trước đây) đã bị loại bỏ/gộp thành 1 file duy nhất `chat_academic_advisory.yaml`. Calendar chưa từng có DB riêng để tra — đã dùng chung VectorDB như advisory ngay từ khi gộp.
 
 **Citation Protocol**: Mọi khẳng định gắn `[1]`, `[2]` và liệt kê nguồn ở cuối.
 
@@ -323,13 +312,13 @@ Ví dụ mình có thể giúp bạn:
 
 | Điểm so sánh | LISA AI Agent Graph | KLTN Academic RAG Graph |
 | :--- | :--- | :--- |
-| **Số Node** | 9 Nodes | 13 Nodes |
+| **Số Node** | 9 Nodes | 12 Nodes có route thực tế (13 file spec — node 09 giữ lại chỉ để tham chiếu lịch sử, đã gộp vào 06) |
 | **Tier Fast Path** | GreetingDetectionNode (Regex) | GreetingDetectionNode + OffTopicRejectNode + SocialChatTemplate |
 | **Tier kiến thức phổ thông** | Không có | DirectLLMNode (1+1, kiến thức đơn giản) |
 | **Phân quyền** | Không có | SecurityContextExtractionNode (JWT → Role + Scopes + Level) |
 | **Phân loại Intent** | 3 types (comparison, currency, unknown) | 9 types với routing phức tạp |
 | **Nhánh Tính toán** | CurrencyConversionNode (tool tỉ giá) | CalculationNode (GPA + Học phí + Tín chỉ) |
-| **Nhánh Lịch học** | Không có | CalendarLookupNode (Calendar DB) |
+| **Nhánh Lịch học** | Không có | Không có DB riêng — là 1 dạng câu hỏi advisory trong flow hợp nhất, trích lịch tổng quan cả năm từ VectorDB |
 | **Biến đổi truy vấn** | Không có (query thô) | HyDE / Multi-query / Procedure mode / Document mode |
 | **Tìm kiếm** | Keyword / Direct Doc | Pre-filtered Hybrid (Dense + BM25) + RRF |
 | **Tinh lọc** | Không có Re-rank | Cross-Encoder Rerank + Score Threshold |

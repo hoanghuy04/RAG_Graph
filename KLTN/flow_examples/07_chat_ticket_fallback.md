@@ -315,14 +315,15 @@ Node 12: GenerationSynthesisNode    → main/chat_ticket_fallback.yaml  [tùy ch
 
 ---
 
-## Tóm Tắt Toàn Bộ 8 Luồng — Node → Prompt Mapping
+## Tóm Tắt Toàn Bộ 7 Luồng — Node → Prompt Mapping
 
-| Node | 01 Default | 02 Single | 03 Multi | 04 Procedure | 05 Calculation | 06 Calendar | 07 Direct | 08 Fallback |
-|---|---|---|---|---|---|---|---|---|
-| **03 Classification** | `message_classification` | ← | ← | ← | ← | ← | ← | ← |
-| **06 QueryTransform** | `hyde_generator` | `hyde_generator` | `multi_query_decomposer` | `hyde_generator` (PROC) | ❌ | ❌ | ❌ | `hyde_generator` |
-| **08 Calculation** | ❌ | ❌ | ❌ | ❌ | `calculation_extractor` | ❌ | ❌ | ❌ |
-| **09 Calendar** | ❌ | ❌ | ❌ | ❌ | ❌ | Calendar DB (no prompt) | ❌ | ❌ |
-| **10 Retrieval** | VectorDB | ← | ← Fan-out×2 | ← | ❌ | ❌ | ❌ | VectorDB |
-| **11 Rerank** | `reranker_compressor` | ← | ← | ← | ❌ | ❌ | ❌ | `reranker_compressor` → **FALSE** |
-| **12/05A Gen.** | `chat_academic_default` | `chat_single_intent` | `chat_multi_intent_synthesis` | `chat_procedure_steps` | `chat_calculation_result` | `chat_calendar_result` | `chat_direct_llm` (05A) | `chat_ticket_fallback` |
+> **Cập nhật gộp flow (2026-08)**: Advisory/Single/Procedure/Document/Calendar nay dùng chung 1 flow (node 06 → 10 → 11 → 12 với template `chat_academic_advisory`). Không còn `CalendarLookupNode` (09) / Calendar DB riêng — Calendar chỉ là một dạng câu hỏi HyDE+RAG như Advisory, không có bảng riêng nữa.
+
+| Node | 01 Advisory (đơn/HyDE, gồm cả Calendar) | 03 Multi | 04 Procedure/Document | 05 Calculation | 07 Direct | 08 Fallback |
+|---|---|---|---|---|---|---|
+| **03 Classification** | `message_classification` | ← | ← | ← | ← | ← |
+| **06 QueryTransform** | `hyde_generator` | `multi_query_decomposer` | `hyde_generator` (PROC/DOC) | ❌ | ❌ | `hyde_generator` |
+| **08 Calculation** | ❌ | ❌ | ❌ | `calculation_extractor` | ❌ | ❌ |
+| **10 Retrieval** | VectorDB | ← Fan-out×2 | ← | ❌ | ❌ | VectorDB |
+| **11 Rerank** | `reranker_compressor` | ← | ← | ❌ | ❌ | `reranker_compressor` → **FALSE** |
+| **12/05A Gen.** | `chat_academic_advisory` | `chat_multi_intent_synthesis` | `chat_academic_advisory` | `chat_calculation_result` | `chat_direct_llm` (05A) | `chat_ticket_fallback` |

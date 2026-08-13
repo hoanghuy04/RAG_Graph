@@ -1,0 +1,33 @@
+# ACADEMIC_PROMPT_TASK_2
+# Nhiệm vụ 2 - Đặt câu hỏi thu thập metadata bắt buộc còn thiếu
+description: "Nhiệm vụ 2: Đặt câu hỏi thu thập metadata còn thiếu — field KHÔNG lấy từ danh sách tĩnh như lisa-ai-agent (KLTN không thể áp cứng 1 danh sách field cố định vì mỗi chủ đề quy chế có thể phụ thuộc thuộc tính khác nhau). CalculationNode/AcademicComparisonNode có checklist field cố định riêng (Type A) và KHÔNG đi qua template này — chúng dùng AskUserClarificationNode riêng. Template này chỉ phục vụ Type B: field do chính LLM tự phát hiện tại NHIỆM VỤ 1 khi thấy văn bản chia nhánh theo thuộc tính sinh viên chưa xác định."
+content: |
+  ### NHIỆM VỤ 2: ĐẶT CÂU HỎI THU THẬP METADATA CÒN THIẾU
+
+  Có 2 nguồn field cần hỏi — xử lý CHỈ một trong hai theo đúng thứ tự ưu tiên:
+
+  1. **Field đã tự phát hiện ở lượt hỏi TRƯỚC** (carry-over từ chính bạn, không phải từ node khác): nếu `<missing_metadata_to_confirm>` bên dưới KHÁC "Không có" — nghĩa là lượt trước bạn đã tự đặt field này ở NHIỆM VỤ 1 nhưng sinh viên trả lời chưa đủ rõ để giải quyết — dùng LẠI ĐÚNG field/tên đó, KHÔNG tự đổi tên khác dù nghĩ ra cách diễn đạt hay hơn (đổi tên sẽ làm mất liên kết với lựa chọn UI đã hiển thị ở lượt trước).
+  2. **Field bạn tự phát hiện MỚI ở NHIỆM VỤ 1 lượt này** (rule "PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN"): nếu `<missing_metadata_to_confirm>` là "Không có" nhưng khi đối chiếu văn bản bạn thấy câu trả lời phụ thuộc một thuộc tính sinh viên chưa xác định — tự đặt `field` (tên ngắn gọn không dấu, VD: `training_type`, `khoa_hoc`, `loai_giay_to`), tự viết `field_definition` theo đúng ý văn bản, và lấy `options` (nếu có) NGUYÊN VĂN từ nhãn nhánh trong văn bản.
+
+  Metadata cần thu thập tiếp (nếu còn treo từ lượt hỏi trước):
+  <missing_metadata_to_confirm>
+  {missing_metadata_to_confirm}
+  </missing_metadata_to_confirm>
+
+  Định nghĩa của field cần hỏi (nếu do node trước truyền vào):
+  <missing_field_definition>
+  {missing_field_definition}
+  </missing_field_definition>
+
+  Lưu ý:
+  - Luôn đặt câu hỏi khi có field cần thu thập theo 1 trong 2 nguồn ở trên, TUYỆT ĐỐI không được bỏ qua. Nếu cả `<missing_metadata_to_confirm>` là "Không có" VÀ không phát hiện nhánh nào thiếu thuộc tính ở NHIỆM VỤ 1, TUYỆT ĐỐI không đặt câu hỏi nào kết thúc bằng dấu "?".
+  - CÂU HỎI CUỐI CÙNG BẮT BUỘC là một câu hỏi hoàn chỉnh kết thúc bằng dấu `?`.
+    - ĐÚNG: "Bạn đang học theo hệ đào tạo nào ạ?"
+    - SAI: "Bạn có thể chọn hệ đào tạo dưới đây:" (kết thúc bằng `:` là SAI).
+  - DUY NHẤT 01 CÂU HỎI Ở CUỐI: toàn bộ phản hồi chỉ được có đúng 1 câu hỏi, nằm ở cuối cùng, ngay trước JSON `ask_user_choice`. Phần nội dung tư vấn phía trên TUYỆT ĐỐI không được chứa câu hỏi/câu dẫn dắt khác.
+  - CHỈ hỏi đúng MỘT field — dù NHIỆM VỤ 1 phát hiện nhiều thuộc tính cùng thiếu, hoặc `<missing_metadata_to_confirm>` liệt kê nhiều field, chỉ chọn field chặn câu trả lời sớm nhất để hỏi trong lượt này; các field còn lại hỏi ở lượt sau nếu vẫn cần.
+  - KHÔNG tự suy hoặc tự chốt field cần hỏi từ tiêu đề môn học, mã ngành, ví dụ hay nhánh không liên quan trong tài liệu.
+  - TUYỆT ĐỐI KHÔNG liệt kê giá trị option bằng chữ trong câu trả lời khi đã có JSON `ask_user_choice` — giá trị chỉ nằm trong block JSON để UI render.
+  - Xưng hô nhất quán với văn phong toàn phản hồi (VD: "Bạn/Sinh viên...").
+
+  {ask_user_choice_guide}

@@ -64,6 +64,35 @@ Dữ liệu động từ Graph State (như metadata người dùng, tài liệu 
       context_chunks=formatted_chunks_string
   )
   ```
+* **Khối Hỏi Lại Metadata (`{task_2}`)** — chỉ có ở `chat_academic_advisory` và `chat_multi_intent_synthesis` (2 template duy nhất chạy qua flow Advisory hợp nhất, nơi có thể phát sinh Type B — xem [`missing_metadata_clarification_design.md`](missing_metadata_clarification_design.md)). `task_2.yaml` tự nó có 2 placeholder (`{missing_metadata_to_confirm}`, `{missing_field_definition}`) và nhúng lồng `{ask_user_choice_guide}`, nên phải format 2 lớp giống LISA:
+  ```python
+  # Nguồn duy nhất của missing_metadata_to_confirm: state.pending_clarification —
+  # do CHÍNH node 12 ghi vào ở lượt hỏi trước đó (Type B tự phát hiện, không có
+  # node extractor riêng nào feed vào đây như lisa). Nếu chưa từng hỏi gì, hoặc
+  # lượt trước đã được giải quyết (node 06 merge câu trả lời + retrieval lại
+  # thành công) thì pending_clarification = None → mặc định "Không có".
+  if state.pending_clarification is not None:
+      missing_metadata_text = json.dumps({
+          "type": "ask_user_choice",
+          "field": state.pending_clarification.missing_field,
+          "options": (
+              [{"id": o, "label": o} for o in state.pending_clarification.options]
+              if state.pending_clarification.options else None
+          ),
+      }, ensure_ascii=False)
+      missing_field_definition_text = state.pending_clarification.field_definition
+  else:
+      missing_metadata_text = "Không có"
+      missing_field_definition_text = "Không có"
+
+  task_2_text = templates.task_2.format(
+      missing_metadata_to_confirm=missing_metadata_text,
+      missing_field_definition=missing_field_definition_text,
+      ask_user_choice_guide=templates.ask_user_choice_guide,   # chuỗi tĩnh, không có placeholder riêng
+  )
+  ```
+  **Vì sao đọc lại từ `pending_clarification` thay vì luôn "Không có"?** Để xử lý đúng trường hợp retry: nếu ở lượt trước node 12 đã tự đặt field `training_type`, mà lượt sau node 06 merge câu trả lời của sinh viên vào query nhưng retrieval lại VẪN trả về đoạn văn bản chia nhánh (case hiếm, VD sinh viên trả lời mơ hồ khiến node 06 merge sai) — node 12 phải thấy lại đúng `training_type` đã hỏi lần trước để tiếp tục hỏi cho rõ, KHÔNG được tự đặt tên field khác (VD đổi thành `hinh_thuc_dao_tao`) vì sẽ làm mất liên kết `id` với lựa chọn UI đã hiển thị ở lượt trước.
+
 > **Khối Nhiệm vụ đối chiếu (`{task_1}`) là chuỗi tĩnh, không cần format ở bước này.** Toàn bộ tri thức học vụ đã nằm trong `<academic_context>` của `{prepared_context}`, nên `task_1` chỉ chứa quy tắc xử lý, không chứa dữ liệu động. Đây là điểm khác biệt so với LISA — hệ đó nạp tri thức theo từng cặp metadata được người dùng chốt dần qua hội thoại nên `task_1` phải có các block con (`confirmation_section`, `information_need_section`) và phải format 2 lớp. KLTN lấy bối cảnh phân quyền trực tiếp từ JWT và truy xuất một khối tri thức duy nhất, nên không có vòng chốt metadata nào để tách block.
 
 ### Bước 2.2: Ráp các khối con vào Khung Sườn Chính (Main Structural Templates)
@@ -79,16 +108,21 @@ base_params = {
     "citation_rules": templates.citation_rules,
     "prepared_context": prepared_context_text,    # Khối con đã được điền thông tin ở Bước 2.1
     "task_1": templates.task_1,                   # Chuỗi tĩnh, không có placeholder
+    "task_2": task_2_text,                        # CHỈ có ở chat_academic_advisory/chat_multi_intent_synthesis — Khối con đã format 2 lớp ở Bước 2.1
 }
 ```
 
-> `{task_1}` chỉ có mặt ở các khung sườn đi qua RAG (`chat_single_intent`, `chat_procedure_steps`, `chat_multi_intent_synthesis`). Các khung không có `<academic_context>` — `chat_direct_llm`, `chat_calculation_result`, `chat_calendar_result`, `chat_ticket_fallback` — **không** chèn khối này, vì quy tắc "chỉ trả lời dựa trên văn bản đối chiếu được" không áp dụng khi không có văn bản nào được truy xuất.
+> `chat_direct_llm`, `chat_calculation_result`, `chat_ticket_fallback` không có `{task_2}` trong template nên **không cần** đưa key này vào `base_params` khi build cho các luồng đó — `.format(**base_params)` không lỗi nếu dict thừa key không dùng tới, nhưng nên loại bớt cho rõ ràng.
+
+> **Cập nhật gộp flow (2026-08)**: `chat_single_intent.yaml`, `chat_calendar_result.yaml`, `chat_procedure_steps.yaml` đã bị gộp thành 1 file `chat_academic_advisory.yaml` (flow Advisory hợp nhất: advisory/procedure/document/calendar) — xem [`missing_metadata_clarification_design.md`](missing_metadata_clarification_design.md), [`nodes/06_query_transformation_node.md`](nodes/06_query_transformation_node.md).
+>
+> `{task_1}` chỉ có mặt ở các khung sườn đi qua RAG (`chat_academic_advisory`, `chat_multi_intent_synthesis`). Các khung không có `<academic_context>` — `chat_direct_llm`, `chat_calculation_result`, `chat_ticket_fallback` — **không** chèn khối này, vì quy tắc "chỉ trả lời dựa trên văn bản đối chiếu được" không áp dụng khi không có văn bản nào được truy xuất. `chat_academic_advisory` luôn có `<academic_context>` cho cả 4 loại câu hỏi nó xử lý (advisory/procedure/document/calendar) vì KLTN không có DB lịch riêng — Calendar chỉ là văn bản chung trong cùng VectorDB, nên `{task_1}` áp dụng thống nhất, không có ngoại lệ nào bỏ qua NHIỆM VỤ 1.
 
 Hệ thống sẽ lựa chọn Khung sườn chính (Main Frame) tương ứng với luồng đi của Graph trong [main/](file:///Users/admin/Desktop/Hoang_Huy/self/Flow/KLTN/prompt_template/main) và gọi toán tử giải nén tham số `**base_params` để hoàn thiện:
 
 ```python
-# Ví dụ: Ráp vào khung sườn luồng hỏi đáp mặc định
-final_system_prompt = templates.chat_academic_default.format(**base_params)
+# Ví dụ: Ráp vào khung sườn flow Advisory hợp nhất (advisory/procedure/document/calendar)
+final_system_prompt = templates.chat_academic_advisory.format(**base_params)
 ```
 
 ---
@@ -109,7 +143,7 @@ final_system_prompt = templates.chat_academic_default.format(**base_params)
                                  Tạo base_params dictionary
                                               │
                                               ▼
-                        templates.chat_academic_default.format(**base_params)
+                        templates.chat_academic_advisory.format(**base_params)
                                               │
                                               ▼
 ┌───────────────────────────────────────────────────────────────────────────────────────────┐

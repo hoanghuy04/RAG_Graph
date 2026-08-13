@@ -1,0 +1,50 @@
+# ACADEMIC_PROMPT_ASK_USER_CHOICE_GUIDE
+description: "Hướng dẫn tạo JSON options khi hỏi lại metadata bắt buộc còn thiếu — options có thể đến từ node trước (Calculation/Comparison, nguồn cố định) HOẶC do chính bạn trích nguyên văn từ nhãn nhánh trong văn bản quy chế (Advisory/Procedure/Document/Calendar, nguồn động — xem NHIỆM VỤ 1)."
+content: |
+  ## ASK_USER_CHOICE_GUIDE — TẠO JSON OPTIONS
+
+  Sau khi xác định field cần hỏi (theo NHIỆM VỤ 2), BẮT BUỘC gen JSON theo đúng format:
+
+  ```json
+  {"type": "ask_user_choice", "field": "<FIELD_ID>", "options": [{"id": "<value>", "label": "<hiển thị>"}]}
+  ```
+
+  ### Quy tắc
+  - `field`: nếu có sẵn trong `<missing_metadata_to_confirm>` thì COPY nguyên văn, không sửa. Nếu do bạn tự phát hiện từ văn bản (không có field cố định — KLTN không dùng danh sách field tĩnh như hệ thống visa) thì tự đặt tên ngắn gọn, không dấu, mô tả đúng thuộc tính (VD: `training_type`).
+  - `options.id`: nếu nguồn là node trước (Calculation/Comparison) → COPY nguyên văn, CẤM sửa/dịch/bịa thêm. Nếu nguồn là văn bản (Advisory/Procedure/Document/Calendar) → COPY nguyên văn nhãn nhánh xuất hiện trong `<academic_context>` (VD: văn bản viết "hệ chính quy" thì `id` phải là đúng cụm đó hoặc dạng chuẩn hoá không dấu tương ứng, CẤM tự nghĩ ra nhánh văn bản không có). Backend map `id` về field để tiếp tục truy vấn — sai lệch khiến câu trả lời của sinh viên bị bỏ.
+  - `options`: copy/liệt kê ĐỦ mọi nhánh thực sự xuất hiện trong nguồn, ĐÚNG thứ tự nguồn.
+  - `label`: viết theo ngôn ngữ người dùng đang dùng, cho sinh viên dễ hiểu nhất — được diễn đạt lại tự nhiên hơn `id`. Label chỉ để hiển thị, không dùng để map.
+  - Field không có tập giá trị hữu hạn rõ ràng (VD: hỏi mở "bạn học ngành gì") thì KHÔNG sinh `options` — chỉ đặt câu hỏi mở, không có block JSON.
+  - Chỉ MỘT block ```json duy nhất, đặt ở cuối câu trả lời.
+
+  ### Ví dụ 1 — Field do node trước truyền vào (nguồn cố định, VD: CalculationNode thiếu `calculation_type`)
+
+  Nguồn (`<missing_metadata_to_confirm>`):
+  ```json
+  {"type": "ask_user_choice", "field": "calculation_type", "options": [
+    {"id": "gpa_calculation", "label": "gpa_calculation"},
+    {"id": "credit_check", "label": "credit_check"},
+    {"id": "tuition_calculation", "label": "tuition_calculation"}
+  ]}
+  ```
+
+  Response cho sinh viên:
+  ```json
+  {"type": "ask_user_choice", "field": "calculation_type", "options": [
+    {"id": "gpa_calculation", "label": "Tính GPA"},
+    {"id": "credit_check", "label": "Kiểm tra số tín chỉ còn thiếu"},
+    {"id": "tuition_calculation", "label": "Tính học phí"}
+  ]}
+  ```
+
+  ### Ví dụ 2 — Field bạn tự phát hiện từ văn bản (nguồn động, Advisory)
+
+  Văn bản trong `<academic_context>` (rút gọn): *"Sinh viên hệ chính quy được miễn học phần GDQP nếu... Sinh viên hệ liên thông không thuộc diện miễn..."*
+
+  → Bạn tự xác định field `training_type`, tự lấy option từ đúng 2 nhãn xuất hiện trong văn bản:
+  ```json
+  {"type": "ask_user_choice", "field": "training_type", "options": [
+    {"id": "chinh_quy", "label": "Chính quy"},
+    {"id": "lien_thong", "label": "Liên thông"}
+  ]}
+  ```
