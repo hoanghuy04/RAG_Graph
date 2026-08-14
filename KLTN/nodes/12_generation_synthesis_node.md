@@ -76,17 +76,10 @@ def collect_pending_clarification(raw_llm_response: str) -> PendingClarification
     if parsed.get("type") != "ask_user_choice":
         return None  # không phải JSON hỏi lại (VD lỡ có code block khác) → bỏ qua
 
-    # 2. field_definition KHÔNG lấy từ 1 key riêng trong JSON — task_2.yaml không
-    #    yêu cầu LLM tự mô tả field bằng JSON key riêng, mà lấy NGUYÊN VĂN câu hỏi
-    #    tự nhiên LLM vừa viết (đoạn text ngay trước khối ```json) làm "định nghĩa".
-    #    Lượt sau nạp lại đúng câu này vào {missing_field_definition} — LLM đọc lại
-    #    chính câu mình từng hỏi, không cần một trường JSON tách biệt dễ lệch nghĩa.
-    asked_question_text = extract_text_before_json_block(raw_llm_response)
-
     return PendingClarification(
         origin_node="QueryTransformationNode",  # luôn cố định — Type B luôn resume ở node 06, xem Mục 5 trong missing_metadata_clarification_design.md
+        pending_sub_query_id=parsed.get("sub_query_id"),  # None nếu luồng SINGLE
         missing_field=parsed["field"],
-        field_definition=asked_question_text,
         options=[o["id"] for o in parsed.get("options") or []] or None,
         retry_count=(
             state.pending_clarification.retry_count
@@ -98,7 +91,17 @@ def collect_pending_clarification(raw_llm_response: str) -> PendingClarification
 state.pending_clarification = collect_pending_clarification(raw_llm_response)
 ```
 
-**3 điểm quan trọng**:
+**4 điểm quan trọng**:
 - `origin_node` **không phải LLM quyết định** — orchestrator gán cứng `"QueryTransformationNode"` mỗi khi parser bắt được `ask_user_choice` từ node 12, vì Type B luôn resume ở node 06 (retrieval lại với thuộc tính mới), không bao giờ resume thẳng ở node 12.
 - `retry_count` **giữ nguyên** nếu field hỏi lại trùng với field đã hỏi lượt trước (cùng câu hỏi chưa được giải quyết) — việc **tăng** `retry_count` xảy ra ở bước routing của node 02 (Clarification Guard, [`nodes/02_security_context_extraction_node.md`](02_security_context_extraction_node.md)) khi quyết định route trở lại `origin_node`, không phải ở đây.
 - Nếu response KHÔNG có khối `ask_user_choice` (LLM trả lời trọn vẹn — trường hợp bình thường, hoặc trường hợp hết `MAX_CLARIFICATION_RETRY` buộc phải trả lời an toàn theo rule "SO SÁNH PHƯƠNG ÁN"), `pending_clarification` được xoá về `None` — kết thúc vòng hỏi lại.
+- Node này **không bao giờ ghi** `state.confirmed_metadata`. Nó chỉ biết field nào còn thiếu, không biết câu trả lời — câu trả lời đến ở lượt sau. Single-writer của `confirmed_metadata` là Clarification Guard ở node 02; ghi rời rạc từ nhiều nơi sẽ khiến giá trị bị đè bằng `None` khi một node skip hoặc fail.
+
+### Vì sao `PendingClarification` không có `field_definition`
+
+Bản thiết kế trước lưu nguyên văn câu hỏi LLM vừa viết vào một trường tên `field_definition`, rồi nạp lại ở lượt sau. Trường này đã bị **bỏ**, vì hai lý do:
+
+- Nó không phải một định nghĩa. Nó là câu hỏi — tên trường nói một đằng, nội dung một nẻo.
+- Nó không còn tác dụng sau khi có `confirmed_metadata`. Đường sinh viên trả lời rõ: guard đã ghi giá trị vào `<student_declared_attributes>`, LLM không cần đọc lại câu hỏi cũ. Đường trả lời không rõ: LLM đọc lại `<academic_context>` và tự diễn đạt câu hỏi mới — **chính xác hơn** câu cũ, vì lượt này có thể đã retrieval ra văn bản khác.
+
+Định nghĩa của field luôn nằm ở đúng một nơi: nhãn nhánh trong chính văn bản quy chế. Không nhân bản nó vào state.

@@ -16,6 +16,7 @@ content: |
   - `label`: viết theo ngôn ngữ người dùng đang dùng, cho sinh viên dễ hiểu nhất — được diễn đạt lại tự nhiên hơn `id`. Label chỉ để hiển thị, không dùng để map.
   - Field không có tập giá trị hữu hạn rõ ràng (VD: hỏi mở "bạn học ngành gì") thì KHÔNG sinh `options` — chỉ đặt câu hỏi mở, không có block JSON.
   - Chỉ MỘT block ```json duy nhất, đặt ở cuối câu trả lời.
+  - `sub_query_id`: CHỈ thêm khoá này khi câu hỏi gốc đã được phân rã thành nhiều sub-query (luồng MULTI) — ghi đúng mã của sub-query còn thiếu thuộc tính (VD: `"SQ2"`). Lượt sau hệ thống dùng nó để chỉ truy vấn lại đúng sub-query đó, giữ nguyên các ý bạn đã trả lời trọn vẹn. Luồng chỉ có một câu hỏi đơn thì BỎ QUA khoá này.
 
   ### Ví dụ 1 — Field do node trước truyền vào (nguồn cố định, VD: CalculationNode thiếu `calculation_type`)
 

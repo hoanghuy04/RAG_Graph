@@ -6,21 +6,23 @@ content: |
 
   Có 2 nguồn field cần hỏi — xử lý CHỈ một trong hai theo đúng thứ tự ưu tiên:
 
-  1. **Field đã tự phát hiện ở lượt hỏi TRƯỚC** (carry-over từ chính bạn, không phải từ node khác): nếu `<missing_metadata_to_confirm>` bên dưới KHÁC "Không có" — nghĩa là lượt trước bạn đã tự đặt field này ở NHIỆM VỤ 1 nhưng sinh viên trả lời chưa đủ rõ để giải quyết — dùng LẠI ĐÚNG field/tên đó, KHÔNG tự đổi tên khác dù nghĩ ra cách diễn đạt hay hơn (đổi tên sẽ làm mất liên kết với lựa chọn UI đã hiển thị ở lượt trước).
-  2. **Field bạn tự phát hiện MỚI ở NHIỆM VỤ 1 lượt này** (rule "PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN"): nếu `<missing_metadata_to_confirm>` là "Không có" nhưng khi đối chiếu văn bản bạn thấy câu trả lời phụ thuộc một thuộc tính sinh viên chưa xác định — tự đặt `field` (tên ngắn gọn không dấu, VD: `training_type`, `khoa_hoc`, `loai_giay_to`), tự viết `field_definition` theo đúng ý văn bản, và lấy `options` (nếu có) NGUYÊN VĂN từ nhãn nhánh trong văn bản.
+  1. **Field đã hỏi ở lượt TRƯỚC nhưng chưa được giải quyết**: nếu `<missing_metadata_to_confirm>` bên dưới KHÁC "Không có" — nghĩa là lượt trước bạn đã hỏi field này nhưng sinh viên trả lời không khớp nhánh nào — dùng LẠI ĐÚNG tên `field` và tập `options` đó, KHÔNG tự đổi tên dù nghĩ ra cách diễn đạt hay hơn. Đổi tên sẽ làm mất liên kết với lựa chọn UI đã hiển thị, đồng thời reset bộ đếm số lần hỏi lại → sinh viên bị kẹt trong vòng hỏi không bao giờ kết thúc.
+     Nếu sinh viên đã trả lời rõ ở lượt trước, giá trị đó KHÔNG xuất hiện ở đây nữa mà đã nằm trong `<student_declared_attributes>` — coi như đã xong, không hỏi lại.
+  2. **Field bạn tự phát hiện MỚI ở NHIỆM VỤ 1 lượt này** (rule "PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN"): nếu `<missing_metadata_to_confirm>` là "Không có" nhưng khi đối chiếu văn bản bạn thấy câu trả lời phụ thuộc một thuộc tính sinh viên chưa xác định ở CẢ BA nguồn (`<academic_user_context>`, `<student_declared_attributes>`, câu hỏi) — tự đặt `field` (tên ngắn gọn không dấu, VD: `training_type`, `khoa_hoc`, `loai_giay_to`) và lấy `options` (nếu có) NGUYÊN VĂN từ nhãn nhánh trong văn bản.
 
-  Metadata cần thu thập tiếp (nếu còn treo từ lượt hỏi trước):
+  Metadata còn treo từ lượt hỏi trước — sinh viên đã được hỏi nhưng trả lời chưa khớp
+  nhánh nào trong văn bản (là "Không có" ở lượt đầu, và ở mọi lượt sinh viên đã trả lời rõ):
   <missing_metadata_to_confirm>
   {missing_metadata_to_confirm}
   </missing_metadata_to_confirm>
 
-  Định nghĩa của field cần hỏi (nếu do node trước truyền vào):
-  <missing_field_definition>
-  {missing_field_definition}
-  </missing_field_definition>
+  Khối này KHÔNG chứa định nghĩa của field. Định nghĩa nằm ở chính văn bản trong
+  `<academic_context>` — bạn đọc lại nhãn nhánh ở đó để diễn đạt câu hỏi, và diễn đạt
+  lại tự nhiên hơn lượt trước nếu cần, miễn giữ NGUYÊN tên `field` và tập `options`.
 
   Lưu ý:
-  - Luôn đặt câu hỏi khi có field cần thu thập theo 1 trong 2 nguồn ở trên, TUYỆT ĐỐI không được bỏ qua. Nếu cả `<missing_metadata_to_confirm>` là "Không có" VÀ không phát hiện nhánh nào thiếu thuộc tính ở NHIỆM VỤ 1, TUYỆT ĐỐI không đặt câu hỏi nào kết thúc bằng dấu "?".
+  - **NHIỆM VỤ NÀY CHỈ CHẠY KHI NHIỆM VỤ 1 ĐÃ CHỌN "CÁCH 2 — HỎI LẠI".** Nếu NHIỆM VỤ 1 chọn "CÁCH 1 — TRẢ LỜI PHÂN NHÁNH" (dựng bảng so sánh đầy đủ các nhánh), bạn ĐÃ trả lời xong — bỏ qua toàn bộ nhiệm vụ này, KHÔNG đặt câu hỏi, KHÔNG sinh JSON `ask_user_choice`. Hỏi lại sau khi đã liệt kê đủ các nhánh là thừa và gây khó chịu.
+  - Luôn đặt câu hỏi khi có field cần thu thập theo 1 trong 2 nguồn ở trên, TUYỆT ĐỐI không được bỏ qua. Nếu cả `<missing_metadata_to_confirm>` là "Không có" VÀ NHIỆM VỤ 1 không chọn CÁCH 2, TUYỆT ĐỐI không đặt câu hỏi nào kết thúc bằng dấu "?".
   - CÂU HỎI CUỐI CÙNG BẮT BUỘC là một câu hỏi hoàn chỉnh kết thúc bằng dấu `?`.
     - ĐÚNG: "Bạn đang học theo hệ đào tạo nào ạ?"
     - SAI: "Bạn có thể chọn hệ đào tạo dưới đây:" (kết thúc bằng `:` là SAI).

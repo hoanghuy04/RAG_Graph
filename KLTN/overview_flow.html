@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<title>Vòng Lặp Học Song Hành</title>
+<title>Vòng Lặp Miễn Giảm Học Phí</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   /* ============ TOKENS — light (default) ============ */
@@ -175,6 +175,7 @@
     max-width:82%; padding:.65rem .95rem; border-radius:14px; font-size:.94rem;
     box-shadow:var(--shadow);
   }
+  .bubble.wide{max-width:97%;}
   .bubble p{margin:0 0 .5rem;}
   .bubble p:last-child{margin-bottom:0;}
   .bubble.user{
@@ -187,6 +188,18 @@
   }
   .bubble .cite{color:var(--seal); font-weight:600; font-size:.85em;}
   .bubble .q{font-weight:600;}
+  .bubble ul{margin:.15rem 0 .5rem; padding-left:1.15rem;}
+  .bubble li{margin:.12rem 0;}
+  .bubble ol{margin:.15rem 0 .5rem; padding-left:1.3rem;}
+
+  .tablewrap{overflow-x:auto; margin:.5rem 0 .6rem;}
+  .tablewrap table{border-collapse:collapse; width:100%; font-size:.83rem;}
+  .tablewrap th, .tablewrap td{
+    border:1px solid var(--rule-soft); padding:.36rem .55rem;
+    text-align:left; vertical-align:top; white-space:nowrap;
+  }
+  .tablewrap th{background:var(--surface-2); font-weight:600;}
+  .tablewrap td.na{color:var(--ink-soft);}
 
   .choices{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.7rem;}
   .chip{
@@ -236,6 +249,25 @@
 
   .node-desc{font-size:.88rem; color:var(--ink-soft); margin:.3rem 0 0; max-width:64ch;}
   .node-desc code{font-size:.87em;}
+
+  .split{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:.7rem; margin:.6rem 0 0;
+  }
+  .lane{
+    border:1px solid var(--rule-soft); border-radius:9px;
+    padding:.6rem .75rem; background:var(--surface);
+  }
+  .lane-head{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.74rem; font-weight:700; letter-spacing:.03em;
+    margin-bottom:.3rem;
+  }
+  .lane.way1{border-left:3px solid var(--resolved);}
+  .lane.way1 .lane-head{color:var(--resolved);}
+  .lane.way2{border-left:3px solid var(--pending);}
+  .lane.way2 .lane-head{color:var(--pending);}
+  .lane p{font-size:.83rem; color:var(--ink-soft); margin:.2rem 0 0;}
 
   pre{
     margin:.55rem 0 0; padding:.7rem .85rem; border-radius:9px;
@@ -287,6 +319,7 @@
   @media (max-width:600px){
     .page{padding:2rem 1rem 4rem;}
     .bubble{max-width:94%;}
+    .bubble.wide{max-width:100%;}
     .ledger{padding-left:1.6rem;}
     .node::before{left:-2.25rem; width:1.5rem; height:1.5rem; font-size:.65rem;}
   }
@@ -297,15 +330,15 @@
 
   <header class="masthead">
     <span class="eyebrow">KLTN Academic Graph — 1 luồng, 2 lượt hội thoại</span>
-    <h1>Vòng Lặp Học Song Hành</h1>
+    <h1>Vòng Lặp Miễn Giảm Học Phí</h1>
     <p class="lede">
-      Một sinh viên hỏi 2 việc cùng lúc — điều kiện học song hành, và học phí
-      chênh lệch giữa hai ngành. Hệ thống decompose thành 3 truy vấn con
-      (<strong>multi-intent</strong>), trả lời được 2/3 ngay từ dữ liệu RAG
-      (<strong>advisory</strong>), nhưng phát hiện ý còn lại phụ thuộc một
-      thuộc tính chưa biết (<strong>missing metadata</strong>) — nên dừng lại
-      đúng 1 câu hỏi trước khi chốt (<strong>ask user choice</strong>). Toàn bộ
-      diễn ra trong đúng 2 lượt.
+      Một sinh viên hỏi 2 việc cùng lúc. Cả hai đều vướng cùng một kiểu vấn đề —
+      văn bản quy chế <strong>chia nhánh theo một thuộc tính sinh viên</strong> mà
+      hệ thống chưa biết — nhưng được xử lý theo hai cách khác hẳn nhau. Ý thứ
+      nhất dựng được bảng so sánh nên trả lời thẳng (<strong>Cách 1</strong>); ý
+      thứ hai thì không, nên dừng lại đúng 1 câu hỏi (<strong>Cách 2</strong>).
+      Đây là hai vế của cùng một quy tắc trong <code>task_1.yaml</code>, đặt cạnh
+      nhau trong một lượt.
     </p>
     <div class="legend">
       <span><i class="dot system"></i>Node điều phối / deterministic</span>
@@ -320,7 +353,7 @@
     <div class="turn-head">
       <span class="turn-num">1</span>
       <div>
-        <div class="turn-title">Lượt 1 — Hỏi gộp, vướng ở một nhánh</div>
+        <div class="turn-title">Lượt 1 — Cùng một vấn đề, hai cách xử lý</div>
         <p class="turn-sub">MessageClassification gắn <code>routing_mode="MULTI"</code> vì câu hỏi có 2 ý tách biệt.</p>
       </div>
     </div>
@@ -328,19 +361,36 @@
     <p class="frontstage-label">Sinh viên thấy</p>
     <div class="chat">
       <div class="bubble user">
-        <p>Cho em hỏi điều kiện đăng ký học song hành là gì, và học phí ngành
-        Công nghệ thông tin với Kế toán chênh nhau bao nhiêu ạ?</p>
+        <p>Cho em hỏi điều kiện đăng ký học song hành là gì, và thủ tục xin miễn
+        giảm học phí thì làm thế nào ạ?</p>
       </div>
-      <div class="bubble bot">
-        <p>Về học phí: CNTT <strong>520.000đ</strong>/tín chỉ <span class="cite">[2]</span>,
-        Kế toán <strong>480.000đ</strong>/tín chỉ <span class="cite">[3]</span> — chênh
-        40.000đ/tín chỉ.</p>
-        <p>Về điều kiện học song hành, quy định hiện khác nhau tuỳ hệ đào tạo <span class="cite">[1]</span>.</p>
-        <p class="q">Bạn đang học theo hệ đào tạo nào ạ?</p>
+      <div class="bubble bot wide">
+        <p><strong>Về điều kiện học song hành</strong>, quy định khác nhau tuỳ hệ đào tạo <span class="cite">[1]</span>:</p>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr><th>Hệ đào tạo</th><th>Được đăng ký?</th><th>Tín chỉ tích lũy tối thiểu</th><th>GPA tối thiểu</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Chính quy</td><td>Có</td><td><strong>30</strong></td><td><strong>2.50</strong></td></tr>
+              <tr><td>Liên thông</td><td>Không thuộc diện</td><td class="na">—</td><td class="na">—</td></tr>
+              <tr><td>Vừa làm vừa học</td><td>Không thuộc diện</td><td class="na">—</td><td class="na">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><em>Áp dụng chung cho mọi hệ:</em></p>
+        <ul>
+          <li>Không trong thời gian bị kỷ luật từ mức cảnh cáo trở lên <span class="cite">[1]</span></li>
+          <li>Đăng ký trong 2 tuần đầu mỗi học kỳ <span class="cite">[1]</span></li>
+        </ul>
+        <p>Bạn đối chiếu hàng tương ứng với hệ đào tạo mình đang học nhé.</p>
+        <p><strong>Về miễn giảm học phí</strong>, mỗi diện có quy trình và nơi nộp
+        hồ sơ riêng biệt <span class="cite">[2]</span>.</p>
+        <p class="q">Bạn thuộc diện miễn giảm nào ạ?</p>
         <div class="choices">
-          <span class="chip">Chính quy</span>
-          <span class="chip">Liên thông</span>
-          <span class="chip">Vừa làm vừa học</span>
+          <span class="chip">Diện chính sách</span>
+          <span class="chip">Học bổng tài trợ</span>
+          <span class="chip">Vay vốn tín dụng</span>
         </div>
       </div>
     </div>
@@ -348,8 +398,8 @@
     <p class="backstage-label">Hệ thống làm</p>
     <div class="ledger">
       <div class="node system" data-n="03">
-        <div class="node-name">MessageClassificationNode <span class="badge system">deterministic input</span></div>
-        <div class="node-desc"><code>primary_intent: "academic_advisory"</code>, <code>routing_mode: "MULTI"</code> — câu hỏi mang 2 ý tách biệt.</div>
+        <div class="node-name">MessageClassificationNode <span class="badge system">LLM</span></div>
+        <div class="node-desc"><code>primary_intent: "academic_advisory"</code>, <code>secondary_intents: ["academic_procedure"]</code>, <code>routing_mode: "MULTI"</code> — tin nhắn là câu ghép, mang 2 yêu cầu tách biệt.</div>
       </div>
       <div class="node system" data-n="04">
         <div class="node-name">IntentRoutingNode <span class="badge system">router</span></div>
@@ -357,36 +407,61 @@
       </div>
       <div class="node seal" data-n="06">
         <div class="node-name">QueryTransformationNode <span class="badge seal">decompose</span></div>
-        <div class="node-desc">Phân rã bằng <code>multi_query_decomposer.yaml</code> thành 3 sub-query độc lập:</div>
-<pre>SQ1  "Quy định điều kiện đăng ký học song hành hai chương trình đào tạo"
-SQ2  "Định mức học phí theo tín chỉ ngành Công nghệ thông tin, 2024-2025"
-SQ3  "Định mức học phí theo tín chỉ ngành Kế toán, 2024-2025"</pre>
+        <div class="node-desc">Phân rã bằng <code>multi_query_decomposer.yaml</code> thành 2 sub-query độc lập:</div>
+<pre>SQ1  "Điều kiện đăng ký học song hành hai chương trình đào tạo"
+SQ2  "Quy trình và hồ sơ xin miễn giảm học phí"</pre>
       </div>
       <div class="node seal" data-n="10">
-        <div class="node-name">RetrievalFilteringNode <span class="badge seal">VectorDB ×3</span></div>
-        <div class="node-desc"><code>asyncio.gather()</code> chạy song song cả 3 sub-query, mỗi nhóm rerank riêng ở node 11 — cả 3 đều đạt <code>score ≥ 0.70</code>.</div>
+        <div class="node-name">RetrievalFilteringNode <span class="badge seal">VectorDB ×2</span></div>
+        <div class="node-desc"><code>asyncio.gather()</code> chạy song song 2 sub-query. Payload filter dựng <strong>chỉ</strong> từ <code>academic_security_context</code> — không đọc <code>confirmed_metadata</code>.</div>
+      </div>
+      <div class="node seal" data-n="11">
+        <div class="node-name">PostRetrievalRerankNode <span class="badge seal">threshold theo từng SQ</span></div>
+        <div class="node-desc">Cả 2 nhóm đều đạt <code>score ≥ 0.70</code> → <code>has_valid_context = true</code>. Ngưỡng áp riêng từng sub-query, không phải toàn-hoặc-không.</div>
       </div>
       <div class="node pending" data-n="12">
-        <div class="node-name">GenerationSynthesisNode <span class="badge pending">task_1 phát hiện Type B</span></div>
+        <div class="node-name">GenerationSynthesisNode <span class="badge pending">task_1 rẽ 2 hướng</span></div>
         <div class="node-desc">
-          Đối chiếu từng sub-query độc lập: SQ2, SQ3 đủ căn cứ, trả thẳng. Riêng
-          SQ1 — văn bản chia 2 nhánh theo <strong>hệ đào tạo</strong>, thuộc tính
-          này không có trong <code>academic_metadata</code> lẫn câu hỏi gốc.
+          Cả 2 sub-query đều chạm rule <strong>"PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN"</strong>.
+          Ba nguồn <code>&lt;academic_user_context&gt;</code>, <code>&lt;student_declared_attributes&gt;</code>
+          và câu hỏi đều không cho biết thuộc tính. Nhưng tiêu chí phân định đưa
+          chúng về hai hướng khác nhau:
         </div>
-<pre>SQ1 chunk: "Điều 5: Sinh viên hệ <span class="jstr">CHÍNH QUY</span> được đăng ký học
-song hành khi tích lũy ≥30 TC, GPA≥2.50 [1]. Sinh viên hệ
-<span class="jstr">LIÊN THÔNG</span> và <span class="jstr">VLVH</span> không thuộc diện áp dụng."</pre>
-        <div class="node-desc">task_2 chỉ hỏi <strong>đúng 1 field</strong> cho phần còn thiếu, KHÔNG chặn 2 câu trả lời đã đủ căn cứ ở trên.</div>
+        <div class="split">
+          <div class="lane way1">
+            <div class="lane-head">SQ1 → CÁCH 1: trả lời phân nhánh</div>
+            <p>3 nhánh, cùng bộ tiêu chí (được đăng ký / tín chỉ / GPA) → dựng được bảng.</p>
+            <p>Hệ đào tạo là thứ sinh viên đương nhiên biết về mình → hỏi lại không thu được gì mới.</p>
+            <p><strong>Không hỏi — sinh viên có đáp án ngay trong lượt này.</strong></p>
+          </div>
+          <div class="lane way2">
+            <div class="lane-head">SQ2 → CÁCH 2: hỏi lại</div>
+            <p>3 diện nhưng <strong>không chung tiêu chí nào</strong> — mỗi diện một nơi nộp, một bộ hồ sơ, một mốc thời gian. Ép thành bảng sẽ ra ma trận rỗng.</p>
+            <p>Sinh viên thường <strong>không tự biết</strong> mình thuộc diện nào → liệt kê ra họ cũng không chọn được hàng.</p>
+          </div>
+        </div>
+<pre>SQ2 chunk: "Điều 11: Sinh viên <span class="jstr">DIỆN CHÍNH SÁCH</span> nộp hồ sơ tại Phòng
+CTSV kèm giấy xác nhận của địa phương, trước 30/9. Sinh viên
+<span class="jstr">DIỆN HỌC BỔNG TÀI TRỢ</span> làm việc trực tiếp với đơn vị tài trợ
+theo quy trình riêng của đơn vị. Sinh viên <span class="jstr">DIỆN VAY VỐN TÍN DỤNG</span>
+nộp qua Ngân hàng Chính sách Xã hội nơi cư trú." [2]</pre>
+        <div class="node-desc">task_2 chỉ hỏi <strong>đúng 1 field</strong> cho SQ2, KHÔNG chặn câu trả lời SQ1 đã hoàn chỉnh ở trên.</div>
       </div>
       <div class="node pending" data-n="✓">
-        <div class="node-name">collect_pending_clarification() <span class="badge pending">ghi State</span></div>
+        <div class="node-name">collect_pending_clarification() <span class="badge pending">deterministic, ghi State</span></div>
+        <div class="node-desc">Parse khối <code>ask_user_choice</code> cuối response. Không gọi LLM.</div>
 <pre>{
   <span class="jkey">"origin_node"</span>: <span class="jstr">"QueryTransformationNode"</span>,
-  <span class="jkey">"missing_field"</span>: <span class="jstr">"training_type"</span>,
-  <span class="jkey">"options"</span>: [<span class="jstr">"chinh_quy"</span>, <span class="jstr">"lien_thong"</span>, <span class="jstr">"vlvh"</span>],
+  <span class="jkey">"pending_sub_query_id"</span>: <span class="jstr">"SQ2"</span>,
+  <span class="jkey">"missing_field"</span>: <span class="jstr">"dien_mien_giam"</span>,
+  <span class="jkey">"options"</span>: [<span class="jstr">"chinh_sach"</span>, <span class="jstr">"hoc_bong_tai_tro"</span>, <span class="jstr">"vay_von"</span>],
   <span class="jkey">"retry_count"</span>: 0
 }</pre>
-        <div class="node-desc">SQ2/SQ3 đã trả lời trọn vẹn ở lượt này — chỉ SQ1 còn treo, chờ lượt sau.</div>
+        <div class="node-desc">
+          Không có trường <code>field_definition</code> — định nghĩa của field nằm ở
+          nhãn nhánh trong chính văn bản, không nhân bản vào State.
+          <code>pending_sub_query_id</code> là thứ cho phép lượt sau chỉ chạy lại SQ2.
+        </div>
       </div>
     </div>
   </section>
@@ -401,24 +476,25 @@ song hành khi tích lũy ≥30 TC, GPA≥2.50 [1]. Sinh viên hệ
     <div class="turn-head">
       <span class="turn-num">2</span>
       <div>
-        <div class="turn-title">Lượt 2 — Trả lời, chốt luôn phần còn thiếu</div>
-        <p class="turn-sub">Clarification Guard (node 02) nối thẳng về node 06 — bỏ qua phân loại intent.</p>
+        <div class="turn-title">Lượt 2 — Chốt diện, trả nốt thủ tục</div>
+        <p class="turn-sub">Clarification Guard (node 02) resolve câu trả lời, ghi <code>confirmed_metadata</code>, nối thẳng về node 06.</p>
       </div>
     </div>
 
     <p class="frontstage-label">Sinh viên thấy</p>
     <div class="chat">
       <div class="bubble user">
-        <p>Chính quy ạ.</p>
+        <p>Diện chính sách ạ.</p>
       </div>
       <div class="bubble bot">
-        <p>Bạn thuộc hệ <strong>chính quy</strong> nên đủ điều kiện đăng ký học
-        song hành nếu đã tích lũy từ <strong>30 tín chỉ</strong> trở lên và
-        GPA đạt <strong>2.50</strong> trở lên <span class="cite">[1]</span>.</p>
-        <p>Về học phí: CNTT <strong>520.000đ</strong>/tín chỉ <span class="cite">[2]</span>,
-        Kế toán <strong>480.000đ</strong>/tín chỉ <span class="cite">[3]</span>.</p>
+        <p>Với <strong>diện chính sách</strong>, thủ tục xin miễn giảm học phí gồm <span class="cite">[2]</span>:</p>
+        <ol>
+          <li>Xin <strong>giấy xác nhận đối tượng chính sách</strong> tại UBND xã/phường nơi cư trú.</li>
+          <li>Nộp hồ sơ tại <strong>Phòng Công tác Sinh viên</strong>, hạn cuối <strong>30/9</strong> hằng năm.</li>
+          <li>Theo dõi kết quả xét duyệt trên cổng thông tin sinh viên sau 15 ngày làm việc.</li>
+        </ol>
         <div class="choices">
-          <span class="chip picked">Chính quy</span>
+          <span class="chip picked">Diện chính sách</span>
         </div>
       </div>
     </div>
@@ -428,36 +504,51 @@ song hành khi tích lũy ≥30 TC, GPA≥2.50 [1]. Sinh viên hệ
       <div class="node system" data-n="02">
         <div class="node-name">SecurityContextExtraction — Clarification Guard <span class="badge system">bypass 01 &amp; 03</span></div>
         <div class="node-desc">
-          <code>retry_count(0) &lt; MAX(2)</code> → tăng lên 1 → route thẳng về
-          <code>pending.origin_node</code>. Nếu không bypass, câu trả lời ngắn
-          "Chính quy ạ" sẽ bị 03 phân loại nhầm thành <code>social_chat</code>,
-          mất hết ngữ cảnh câu hỏi ban đầu.
+          Nếu không bypass, câu trả lời ngắn "Diện chính sách ạ" sẽ bị node 03 phân
+          loại thành <code>social_chat</code>, mất hết ngữ cảnh câu hỏi ban đầu.
+        </div>
+<pre>resolve_answer(<span class="jstr">"Diện chính sách ạ"</span>, options) → <span class="jstr">"chinh_sach"</span>
+confirmed_metadata[<span class="jstr">"dien_mien_giam"</span>] = <span class="jstr">"chinh_sach"</span>
+pending_clarification = None
+→ route về pending.origin_node</pre>
+        <div class="node-desc">
+          Khớp được option nên <code>retry_count</code> KHÔNG tăng — nó chỉ tăng khi
+          câu trả lời không khớp nhánh nào. Node này là <strong>single-writer</strong>
+          duy nhất của <code>confirmed_metadata</code>.
         </div>
       </div>
       <div class="node seal" data-n="06">
-        <div class="node-name">QueryTransformationNode (lượt 2) <span class="badge seal">merge &amp; re-run SQ1 riêng</span></div>
+        <div class="node-name">QueryTransformationNode (lượt 2) <span class="badge seal">chỉ re-run SQ2</span></div>
         <div class="node-desc">
-          Chỉ SQ1 còn treo — ghép "hệ chính quy" vào đúng sub-query đó, KHÔNG
-          chạy lại SQ2/SQ3 (đã resolved, không đổi).
+          Đọc <code>pending_sub_query_id = "SQ2"</code> → chỉ ghép thuộc tính vừa chốt
+          vào đúng sub-query đó. SQ1 đã trả lời trọn vẹn ở lượt 1, KHÔNG chạy lại.
         </div>
-<pre>SQ1' "Quy định điều kiện đăng ký học song hành dành cho
-      sinh viên hệ chính quy"</pre>
+<pre>SQ2' "Quy trình và hồ sơ xin miễn giảm học phí
+      dành cho sinh viên diện chính sách"</pre>
       </div>
       <div class="node seal" data-n="10">
-        <div class="node-name">RetrievalFilteringNode <span class="badge seal">retrieval lại, chỉ SQ1</span></div>
-        <div class="node-desc">Truy vấn cụ thể hơn → chunk trả về giờ chỉ còn đúng 1 nhánh áp dụng.</div>
+        <div class="node-name">RetrievalFilteringNode <span class="badge seal">retrieval lại, chỉ SQ2</span></div>
+        <div class="node-desc">Truy vấn cụ thể hơn → chunk trả về giờ chỉ còn đúng nhánh chính sách, kèm mốc thời gian và nơi nộp cụ thể.</div>
       </div>
       <div class="node resolved" data-n="12">
         <div class="node-name">GenerationSynthesisNode <span class="badge resolved">task_1: hết nhánh mơ hồ</span></div>
         <div class="node-desc">
-          Không còn thuộc tính nào chưa biết → <strong>không</strong> kích hoạt
-          task_2. Gộp lại cả 3 ý (SQ1 mới giải quyết + SQ2/SQ3 giữ nguyên) vào
-          1 câu trả lời cuối cùng, đủ trích dẫn <code>[1][2][3]</code>.
+          <code>&lt;student_declared_attributes&gt;</code> giờ mang <code>dien_mien_giam: chinh_sach</code>
+          → thuộc tính đã xác định ở nguồn thứ hai trong ba nguồn → <strong>không</strong>
+          kích hoạt task_2. Trả lời dạng các bước tuần tự theo rule procedure.
         </div>
       </div>
       <div class="node resolved" data-n="✓">
-        <div class="node-name">collect_pending_clarification() <span class="badge resolved">xoá State</span></div>
-        <div class="node-desc">Không còn khối <code>ask_user_choice</code> trong response → <code>state.pending_clarification = None</code>. Kết thúc vòng hỏi lại.</div>
+        <div class="node-name">collect_pending_clarification() <span class="badge resolved">trả None</span></div>
+        <div class="node-desc">
+          Response không có khối <code>ask_user_choice</code> → <code>pending_clarification</code>
+          giữ nguyên <code>None</code>. Kết thúc vòng hỏi lại.
+        </div>
+        <div class="node-desc">
+          <code>confirmed_metadata</code> <strong>không</strong> bị xoá — nó sống suốt phiên.
+          Mọi câu hỏi sau chạm văn bản chia nhánh theo diện miễn giảm sẽ trả lời
+          thẳng, không hỏi lại lần nữa.
+        </div>
       </div>
     </div>
   </section>
@@ -466,24 +557,36 @@ song hành khi tích lũy ≥30 TC, GPA≥2.50 [1]. Sinh viên hệ
     <h2>File liên quan</h2>
     <dl class="filegrid">
       <div>
-        <dt>nodes/06_query_transformation_node.md</dt>
-        <dd>Entry point flow Advisory hợp nhất — MULTI mode, điểm resume của Type B.</dd>
+        <dt>prompt_template/common/task_1.yaml</dt>
+        <dd>Rule "Phát hiện nhánh phụ thuộc thuộc tính sinh viên" — nơi phân định Cách 1 và Cách 2.</dd>
       </div>
       <div>
-        <dt>prompt_template/common/task_1.yaml</dt>
-        <dd>Rule "Phát hiện nhánh phụ thuộc thuộc tính sinh viên" — nơi Type B lộ ra.</dd>
+        <dt>prompt_template/common/response_style.yaml</dt>
+        <dd>Mục 4 — bố cục bảng phân nhánh, điểm chung tách ra bullet ngoài bảng.</dd>
       </div>
       <div>
         <dt>prompt_template/common/task_2.yaml</dt>
-        <dd>Đặt đúng 1 câu hỏi cuối cùng, không chặn các ý đã đủ căn cứ.</dd>
+        <dd>Chỉ chạy khi task_1 chọn Cách 2. Đặt đúng 1 câu hỏi cuối cùng.</dd>
       </div>
       <div>
         <dt>prompt_template/common/ask_user_choice_guide.yaml</dt>
         <dd>Quy tắc sinh JSON <code>ask_user_choice</code> từ nhãn nhánh trong văn bản.</dd>
       </div>
       <div>
+        <dt>prompt_template/common/academic_metadata.yaml</dt>
+        <dd>Hai thẻ tách biệt — JWT đã xác minh vs thuộc tính sinh viên tự khai.</dd>
+      </div>
+      <div>
         <dt>nodes/02_security_context_extraction_node.md</dt>
-        <dd>Clarification Guard — bypass 01/03, tăng <code>retry_count</code>.</dd>
+        <dd>Clarification Guard, <code>resolve_answer</code>, single-writer của <code>confirmed_metadata</code>.</dd>
+      </div>
+      <div>
+        <dt>nodes/06_query_transformation_node.md</dt>
+        <dd>Entry point flow Advisory hợp nhất — MULTI mode, điểm resume của Type B.</dd>
+      </div>
+      <div>
+        <dt>nodes/10_retrieval_filtering_node.md</dt>
+        <dd>Ranh giới cứng — payload filter không đọc <code>confirmed_metadata</code>.</dd>
       </div>
       <div>
         <dt>nodes/12_generation_synthesis_node.md</dt>

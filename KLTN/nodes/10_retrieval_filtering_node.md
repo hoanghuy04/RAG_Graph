@@ -36,6 +36,10 @@ Trước khi tính toán tương đồng vector, hệ thống chuyển các thu�
 ```
 *Tác dụng:* Đảm bảo tuyệt đối không rò rỉ dữ liệu quy chế nội bộ giữa các Khoa hoặc các tài liệu có cấp độ bảo mật cao hơn quyền hạn của người dùng.
 
+> **Ràng buộc cứng — chỉ dựng filter từ `academic_security_context`.** Payload Filter TUYỆT ĐỐI không được đọc `state.confirmed_metadata`. Đó là thuộc tính sinh viên **tự khai** trong hội thoại, chưa qua xác minh (xem [nodes/02](02_security_context_extraction_node.md#6-confirmed_metadata--thuộc-tính-sinh-viên-tự-khai)); nếu nó lọt vào điều kiện lọc, sinh viên chỉ cần khai *"em là học viên cao học"* là mở được tài liệu ngoài quyền — biến kênh hỏi-lại-metadata thành lỗ hổng leo thang đặc quyền.
+>
+> `confirmed_metadata` chỉ được dùng ở tầng sinh câu trả lời (node 12) để **chọn đúng nhánh quy định**, không bao giờ dùng để **mở rộng phạm vi tài liệu**. Ranh giới này nên được khoá bằng test: dựng `confirmed_metadata` chứa giá trị leo thang, assert payload filter sinh ra không đổi.
+
 ### Tầng 2: Parallel Hybrid Retrieval (Tìm kiếm kết hợp song song)
 Hệ thống kích hoạt các luồng worker truy vấn song song qua `asyncio.gather` cho từng query con:
 - **Dense Retrieval (Vector Search):** Sử dụng embedding model (ví dụ: `multilingual-e5-large`) để tìm kiếm tương đồng ngữ nghĩa.
