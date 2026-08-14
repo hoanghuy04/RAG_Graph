@@ -71,35 +71,37 @@ Dữ liệu động từ Graph State (như metadata người dùng, tài liệu 
       context_chunks=formatted_chunks_string
   )
   ```
-* **Khối Hỏi Lại Metadata (`{task_2}`)** — chỉ có ở `chat_academic_advisory` và `chat_multi_intent_synthesis` (2 template duy nhất chạy qua flow Advisory hợp nhất, nơi có thể phát sinh Type B — xem [`missing_metadata_clarification_design.md`](missing_metadata_clarification_design.md)). `task_2.yaml` tự nó có 1 placeholder dữ liệu (`{missing_metadata_to_confirm}`) và nhúng lồng `{ask_user_choice_guide}`, nên phải format 2 lớp giống LISA:
+* **Khối Hỏi Lại Metadata (`{task_2}`)** — chỉ có ở `chat_academic_advisory` và `chat_multi_intent_synthesis` (2 template duy nhất chạy qua flow Advisory hợp nhất, nơi có thể phát sinh Type B — xem [`missing_metadata_clarification_design.md`](missing_metadata_clarification_design.md)). `task_2.yaml` tự nó có 1 placeholder dữ liệu (`{missing_metadata_to_confirm}`) và nhúng lồng `{ask_user_form_guide}`, nên phải format 2 lớp giống LISA:
   ```python
   # Nguồn duy nhất của missing_metadata_to_confirm: state.pending_clarification —
   # do CHÍNH node 12 ghi vào ở lượt hỏi trước đó (Type B tự phát hiện, không có
   # node extractor riêng nào feed vào đây như lisa). Nếu chưa từng hỏi gì, hoặc
   # lượt trước đã được giải quyết (node 06 merge câu trả lời + retrieval lại
   # thành công) thì pending_clarification = None → mặc định "Không có".
-  if state.pending_clarification is not None:
+  pending = state.pending_clarification
+  if pending is not None:
       missing_metadata_text = json.dumps({
-          "type": "ask_user_choice",
-          "field": state.pending_clarification.missing_field,
-          "options": (
-              [{"id": o, "label": o} for o in state.pending_clarification.options]
-              if state.pending_clarification.options else None
-          ),
+          "type": "ask_user_form",
+          "fields": [
+              {"field": field, "options": (
+                  [{"id": o, "label": o} for o in opts] if opts else None
+              )}
+              for field, opts in zip(pending.missing_fields, pending.options)
+          ],
       }, ensure_ascii=False)
   else:
       missing_metadata_text = "Không có"
 
   task_2_text = templates.task_2.format(
       missing_metadata_to_confirm=missing_metadata_text,
-      ask_user_choice_guide=templates.ask_user_choice_guide,   # chuỗi tĩnh, không có placeholder riêng
+      ask_user_form_guide=templates.ask_user_form_guide,   # chuỗi tĩnh, không có placeholder riêng
   )
   ```
-  **Vì sao đọc lại từ `pending_clarification` thay vì luôn "Không có"?** Để xử lý đúng trường hợp retry: nếu ở lượt trước node 12 đã tự đặt field `training_type`, mà lượt sau node 06 merge câu trả lời của sinh viên vào query nhưng retrieval lại VẪN trả về đoạn văn bản chia nhánh (case hiếm, VD sinh viên trả lời mơ hồ khiến node 06 merge sai) — node 12 phải thấy lại đúng `training_type` đã hỏi lần trước để tiếp tục hỏi cho rõ, KHÔNG được tự đặt tên field khác (VD đổi thành `hinh_thuc_dao_tao`) vì sẽ làm mất liên kết `id` với lựa chọn UI đã hiển thị ở lượt trước.
+  **Vì sao đọc lại từ `pending_clarification` thay vì luôn "Không có"?** Để xử lý đúng trường hợp retry: nếu ở lượt trước node 12 đã tự đặt field `he_dao_tao`, mà lượt sau người dùng bỏ trống đúng ô đó trong form — node 12 phải thấy lại đúng `he_dao_tao` đã hỏi lần trước để hỏi tiếp, KHÔNG được tự đặt tên field khác (VD đổi thành `hinh_thuc_dao_tao`) vì sẽ làm mất liên kết `id` với form đã hiển thị. Guard đã lược bớt các field người dùng điền xong, nên khối này chỉ còn phần thực sự treo.
 
   Thiếu bất kỳ placeholder nào trong hai cái trên là `KeyError` làm hỏng cả lượt hội thoại.
 
-  **`{missing_metadata_to_confirm}` là "Không có" ở lượt đầu tiên của mọi câu hỏi** — và đó là đúng, không phải lỗi. Field Type B chỉ lộ ra khi LLM đọc `<academic_context>`, tức là **sau** khi prompt đã đóng băng; LLM không thể ghi ngược vào input của chính nó. Nó ghi nhận phát hiện bằng khối `ask_user_choice` trong **output**, rồi `collect_pending_clarification()` ([`nodes/12`](nodes/12_generation_synthesis_node.md#5-response-post-processing--thu-thập-pending_clarification-từ-output-llm)) parse ra state. Placeholder này chỉ khác "Không có" ở lượt kế tiếp, và chỉ khi sinh viên trả lời **không khớp** option nào — nếu trả lời rõ, guard đã chuyển giá trị sang `confirmed_metadata` và xoá `pending_clarification`.
+  **`{missing_metadata_to_confirm}` là "Không có" ở lượt đầu tiên của mọi câu hỏi** — và đó là đúng, không phải lỗi. Field Type B chỉ lộ ra khi LLM đọc `<academic_context>`, tức là **sau** khi prompt đã đóng băng; LLM không thể ghi ngược vào input của chính nó. Nó ghi nhận phát hiện bằng khối `ask_user_form` trong **output**, rồi `collect_pending_clarification()` ([`nodes/12`](nodes/12_generation_synthesis_node.md#5-response-post-processing--thu-thập-pending_clarification-từ-output-llm)) parse ra state. Placeholder này chỉ khác "Không có" ở lượt kế tiếp, và chỉ khi người dùng **bỏ trống hoặc điền không khớp** một phần form — nếu điền đủ, guard đã chuyển toàn bộ giá trị sang `confirmed_metadata` và xoá `pending_clarification`.
 
   Không còn placeholder `{missing_field_definition}`: `PendingClarification` không lưu định nghĩa field, vì định nghĩa luôn nằm ở nhãn nhánh trong chính văn bản quy chế (xem [`nodes/12`](nodes/12_generation_synthesis_node.md)).
 

@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<title>Vòng Lặp Miễn Giảm Học Phí</title>
+<title>Ba Cách Xử Lý Thiếu Thuộc Tính</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   /* ============ TOKENS — light (default) ============ */
@@ -233,6 +233,7 @@
   .node.seal::before{border-color:var(--seal); color:var(--seal);}
   .node.pending::before{border-color:var(--pending); color:var(--pending); background:var(--pending-soft);}
   .node.resolved::before{border-color:var(--resolved); color:var(--resolved); background:var(--resolved-soft);}
+  .node.alt::before{border-color:var(--pending); color:var(--pending); background:var(--pending-soft);}
 
   .node-name{
     font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
@@ -298,6 +299,190 @@
     border:1px solid var(--pending);
   }
 
+  /* ============ ASK-USER-FORM (interactive) ============ */
+  .askform{
+    margin-top:.75rem; padding-top:.75rem;
+    border-top:1px dashed var(--rule);
+  }
+  .askform-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr));
+    gap:.75rem .9rem;
+  }
+  .field{display:flex; flex-direction:column; gap:.3rem;}
+  .field-label{
+    font-size:.78rem; font-weight:600; color:var(--ink-soft);
+    letter-spacing:.01em;
+  }
+  .field-label .req{color:var(--seal);}
+  .field select, .field input[type="text"]{
+    font:inherit; font-size:.86rem;
+    padding:.42rem .55rem; border-radius:8px;
+    border:1.5px solid var(--rule); background:var(--surface); color:var(--ink);
+    width:100%;
+  }
+  .field select:focus, .field input[type="text"]:focus{
+    outline:none; border-color:var(--system);
+    box-shadow:0 0 0 3px var(--system-soft);
+  }
+  .radioset{display:flex; flex-wrap:wrap; gap:.4rem;}
+  .radioset label{
+    font-size:.83rem; font-weight:600;
+    padding:.36rem .8rem; border-radius:999px;
+    border:1.5px solid var(--pending); background:var(--pending-soft); color:var(--pending);
+    cursor:pointer; user-select:none;
+    transition:background .12s, border-color .12s, color .12s;
+  }
+  .radioset input{position:absolute; opacity:0; width:0; height:0;}
+  .radioset label:hover{filter:brightness(.97);}
+  .radioset input:focus-visible + span{text-decoration:underline;}
+  .radioset input:checked + span{}
+  .radioset label:has(input:checked){
+    background:var(--resolved-soft); border-color:var(--resolved); color:var(--resolved);
+  }
+  .radioset label:has(input:checked) span::before{content:"✓ ";}
+
+  .askform-foot{
+    display:flex; align-items:center; justify-content:flex-end; gap:.7rem;
+    margin-top:.85rem;
+  }
+  .form-hint{font-size:.76rem; color:var(--ink-soft); margin-right:auto;}
+  .form-hint.error{color:var(--seal); font-weight:600;}
+  .btn-submit{
+    font:inherit; font-size:.85rem; font-weight:700;
+    padding:.45rem 1.1rem; border-radius:8px; cursor:pointer;
+    border:1.5px solid var(--system); background:var(--system); color:#FFFFFF;
+    transition:filter .12s;
+  }
+  .btn-submit:hover{filter:brightness(1.08);}
+  .btn-submit:disabled{
+    background:var(--resolved); border-color:var(--resolved);
+    cursor:default; filter:none;
+  }
+  :root[data-theme="dark"] .btn-submit,
+  :root:not([data-theme="light"]) .btn-submit{color:#0F1520;}
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]) .btn-submit{color:#FFFFFF;}
+  }
+
+  .reveal[hidden]{display:none;}
+
+  /* ============ TABLE OF CONTENTS ============ */
+  .toc{
+    margin:0 0 2.8rem; padding:1.1rem 1.3rem 1.25rem;
+    border:1px solid var(--rule); border-radius:12px; background:var(--surface);
+  }
+  .toc h2{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 .85rem; font-weight:700;
+  }
+  .toc-group{margin-bottom:1.1rem;}
+  .toc-group:last-child{margin-bottom:0;}
+  .toc-group > h3{
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    font-size:.98rem; font-weight:600; margin:0 0 .5rem;
+  }
+  .toc-group > p{font-size:.82rem; color:var(--ink-soft); margin:0 0 .6rem; max-width:66ch;}
+  .toc ol{margin:0; padding-left:1.35rem; display:grid; gap:.32rem;}
+  .toc li{font-size:.88rem;}
+  /* Số luồng phải khớp tên file trong flow_examples/ — 05 đã xoá nên dãy có lỗ;
+     danh sách đánh số tự động sẽ trượt thành 1-6 và lệch với nhãn từng section. */
+  .toc-flows{list-style:none; margin:0; padding:0; display:grid; gap:.34rem;}
+  .toc-flows li{display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap;}
+  .toc-n{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.76rem; font-weight:700; color:var(--seal);
+    min-width:1.6rem; flex:none;
+  }
+  .toc-n.gone{color:var(--ink-soft); opacity:.55;}
+  .toc-flows s{opacity:.7;}
+  .toc li a{font-weight:600; text-decoration:none; border-bottom:1px solid transparent;}
+  .toc li a:hover{border-bottom-color:currentColor;}
+  .toc .toc-note{color:var(--ink-soft); font-weight:400;}
+  .toc .flag{
+    font-size:.68rem; font-weight:700; letter-spacing:.03em;
+    padding:.05rem .38rem; border-radius:4px; margin-left:.3rem;
+    background:var(--pending-soft); color:var(--pending); white-space:nowrap;
+  }
+  .toc .flag.live{background:var(--resolved-soft); color:var(--resolved);}
+  .toc .flag.new{background:var(--system-soft); color:var(--system);}
+
+  /* ============ FLOW SECTIONS ============ */
+  .flow-file{
+    display:inline-block;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.72rem; color:var(--ink-soft);
+    padding:.05rem .4rem; border-radius:4px;
+    background:var(--surface); border:1px solid var(--rule-soft);
+  }
+  .chain{
+    display:flex; flex-wrap:wrap; align-items:center; gap:.28rem;
+    margin:0 0 .4rem; padding:.6rem .75rem;
+    border:1px solid var(--rule-soft); border-radius:9px; background:var(--surface-2);
+  }
+  .pill{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.71rem; font-weight:700;
+    padding:.16rem .45rem; border-radius:5px;
+    border:1px solid var(--rule); color:var(--ink-soft); background:var(--surface-2);
+    white-space:nowrap;
+  }
+  .pill.sys{border-color:var(--system); color:var(--system); background:var(--system-soft);}
+  .pill.rag{border-color:var(--seal); color:var(--seal); background:var(--seal-soft);}
+  .pill.end{border-color:var(--resolved); color:var(--resolved); background:var(--resolved-soft);}
+  .pill.alt{border-color:var(--pending); color:var(--pending); background:var(--pending-soft);}
+  .pill.skip{opacity:.42; text-decoration:line-through;}
+  .pill em{font-style:normal; font-weight:400; opacity:.8;}
+  .arrow{color:var(--ink-soft); font-size:.7rem;}
+  /* Phân cách lượt bên trong một hội thoại nhiều lượt */
+  .turn-sep{
+    display:flex; align-items:center; gap:.6rem;
+    margin:.5rem 0 .1rem; align-self:stretch;
+  }
+  .turn-sep::before, .turn-sep::after{
+    content:""; flex:1; height:1px; background:var(--rule);
+  }
+  .turn-sep span{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.68rem; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--ink-soft); white-space:nowrap; font-weight:700;
+  }
+  .subturn-head{
+    display:flex; align-items:center; gap:.6rem;
+    margin:1.4rem 0 .8rem -1.1rem; padding-bottom:.1rem;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.74rem; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--seal); font-weight:700;
+  }
+  .subturn-head:first-child{margin-top:0;}
+  .subturn-head::after{content:""; flex:1; height:1px; background:var(--seal-soft);}
+
+  .stale{
+    font-size:.83rem; margin:1.1rem 0 0; padding:.6rem .8rem;
+    border-radius:8px; background:var(--pending-soft); color:var(--pending);
+    border-left:3px solid var(--pending); max-width:72ch;
+  }
+  .stale code{background:transparent; border-color:currentColor; color:inherit;}
+
+  /* ============ CASE SEPARATOR ============ */
+  .case-head{
+    margin:0 0 1.8rem; padding:1rem 1.15rem;
+    border:1px solid var(--rule); border-left:4px solid var(--seal);
+    border-radius:10px; background:var(--surface);
+  }
+  .case-head .case-tag{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.7rem; letter-spacing:.11em; text-transform:uppercase;
+    color:var(--seal); font-weight:700;
+  }
+  .case-head h2{
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    font-size:1.35rem; margin:.25rem 0 .35rem; font-weight:600;
+  }
+  .case-head p{margin:0; font-size:.9rem; color:var(--ink-soft); max-width:64ch;}
+  .case-head.guest{border-left-color:var(--pending);}
+  .case-head.guest .case-tag{color:var(--pending);}
+
   /* ============ FOOTER: file index ============ */
   .colophon{
     margin-top:3.5rem; padding-top:1.8rem; border-top:1px solid var(--rule);
@@ -329,16 +514,16 @@
 <div class="page">
 
   <header class="masthead">
-    <span class="eyebrow">KLTN Academic Graph — 1 luồng, 2 lượt hội thoại</span>
-    <h1>Vòng Lặp Miễn Giảm Học Phí</h1>
+    <span class="eyebrow">KLTN Academic Graph — 2 trường hợp, mỗi trường hợp 2 lượt</span>
+    <h1>Ba Cách Xử Lý Thiếu Thuộc Tính</h1>
     <p class="lede">
-      Một sinh viên hỏi 2 việc cùng lúc. Cả hai đều vướng cùng một kiểu vấn đề —
-      văn bản quy chế <strong>chia nhánh theo một thuộc tính sinh viên</strong> mà
-      hệ thống chưa biết — nhưng được xử lý theo hai cách khác hẳn nhau. Ý thứ
-      nhất dựng được bảng so sánh nên trả lời thẳng (<strong>Cách 1</strong>); ý
-      thứ hai thì không, nên dừng lại đúng 1 câu hỏi (<strong>Cách 2</strong>).
-      Đây là hai vế của cùng một quy tắc trong <code>task_1.yaml</code>, đặt cạnh
-      nhau trong một lượt.
+      Văn bản quy chế thường quy định khác nhau tuỳ một
+      <strong>thuộc tính của người hỏi</strong> mà hệ thống chưa biết. Trang này
+      đi qua ba cách xử lý tình huống đó, dựng từ hai hội thoại thật: dựng bảng
+      trả lời thẳng (<strong>Cách 1</strong>), hỏi lại một thuộc tính
+      (<strong>Cách 2, một field</strong>), và hỏi cả cụm thuộc tính bằng form khi
+      người hỏi chưa đăng nhập (<strong>Cách 2, nhiều field</strong>). Các form
+      bên dưới bấm và điền được thật.
     </p>
     <div class="legend">
       <span><i class="dot system"></i>Node điều phối / deterministic</span>
@@ -347,6 +532,46 @@
       <span><i class="dot resolved"></i>Đã giải quyết / kết thúc</span>
     </div>
   </header>
+
+  <nav class="toc">
+    <h2>Mục lục</h2>
+
+    <div class="toc-group">
+      <h3>Hội thoại chi tiết — dựng lại từng lượt</h3>
+      <p>Hai hội thoại đi hết cả frontstage lẫn backstage, tập trung vào cơ chế hỏi lại khi văn bản chia nhánh theo thuộc tính người hỏi. Form bấm và điền được thật.</p>
+      <ol>
+        <li><a href="#case-1">Vòng lặp miễn giảm học phí</a> <span class="toc-note">— sinh viên đã đăng nhập; Cách 1 (bảng) và Cách 2 (hỏi 1 field) cạnh nhau</span></li>
+        <li><a href="#case-2">Học bổng cho người chưa có hồ sơ</a> <span class="toc-note">— khách vãng lai; form 4 field cùng lúc</span></li>
+      </ol>
+    </div>
+
+    <div class="toc-group">
+      <h3>Luồng tham khảo — chín nhánh routing, xếp theo tier</h3>
+      <p>Bám theo bảng tier và <code>ROUTING_MAP</code> trong <code>nodes/kltn_graph_overview.md</code>. Mỗi mục tương ứng đúng một nhánh routing thật của node 04, cùng bố cục hai tầng: chuỗi node, người dùng thấy gì, rồi từng node làm gì.</p>
+      <ul class="toc-flows">
+        <li><span class="toc-n">0a</span><a href="#flow-t0a">Chào hỏi — Fast Path, 0 token LLM</a> <span class="flag new">bổ sung</span></li>
+        <li><span class="toc-n">0b</span><a href="#flow-t0b">Xã giao — template tĩnh sau phân loại</a> <span class="flag new">bổ sung</span></li>
+        <li><span class="toc-n">0c</span><a href="#flow-t0c">Ngoài phạm vi — từ chối khéo</a> <span class="flag new">bổ sung</span></li>
+        <li><span class="toc-n">1</span><a href="#flow-t1">Kiến thức phổ thông — trả lời thẳng, không RAG</a></li>
+        <li><span class="toc-n">2</span><a href="#flow-t2">Tính toán — Calculator Tool, không qua RAG</a></li>
+        <li><span class="toc-n">3</span><a href="#flow-t3">Advisory hợp nhất — một luồng, bốn mode</a> <span class="flag">gộp từ 4 luồng cũ</span></li>
+        <li><span class="toc-n">4a</span><a href="#flow-t4a">Đa ý — phân rã câu ghép, fan-out song song</a></li>
+        <li><span class="toc-n">4b</span><a href="#flow-t4b">So sánh thực thể — node 07 riêng biệt</a> <span class="flag new">bổ sung</span></li>
+        <li><span class="toc-n">5</span><a href="#flow-t5">Không đủ ngữ cảnh — ticket fallback</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="case-head" id="case-1">
+    <span class="case-tag">Trường hợp 1 — sinh viên đã đăng nhập</span>
+    <h2>Vòng Lặp Miễn Giảm Học Phí</h2>
+    <p>
+      JWT đã cho biết khoa và cấp truy cập, nên mỗi câu hỏi chỉ thiếu tối đa một
+      thuộc tính. Sinh viên hỏi 2 việc cùng lúc; cả hai đều chạm nhánh phụ thuộc
+      thuộc tính, nhưng một cái dựng được bảng còn cái kia thì không — hai vế của
+      cùng một quy tắc trong <code>task_1.yaml</code>, đặt cạnh nhau trong một lượt.
+    </p>
+  </div>
 
   <!-- ============ TURN 1 ============ -->
   <section class="turn">
@@ -387,11 +612,21 @@
         <p><strong>Về miễn giảm học phí</strong>, mỗi diện có quy trình và nơi nộp
         hồ sơ riêng biệt <span class="cite">[2]</span>.</p>
         <p class="q">Bạn thuộc diện miễn giảm nào ạ?</p>
-        <div class="choices">
-          <span class="chip">Diện chính sách</span>
-          <span class="chip">Học bổng tài trợ</span>
-          <span class="chip">Vay vốn tín dụng</span>
-        </div>
+        <form class="askform" id="form-case1">
+          <div class="askform-grid">
+            <div class="field" style="grid-column:1/-1;">
+              <span class="field-label">Diện miễn giảm <span class="req">*</span></span>
+              <div class="radioset">
+                <label><input type="radio" name="dien_mien_giam" value="chinh_sach"><span>Diện chính sách</span></label>
+                <label><input type="radio" name="dien_mien_giam" value="hoc_bong_tai_tro"><span>Học bổng tài trợ</span></label>
+                <label><input type="radio" name="dien_mien_giam" value="vay_von"><span>Vay vốn tín dụng</span></label>
+              </div>
+            </div>
+          </div>
+          <div class="askform-foot">
+            <span class="form-hint" id="hint-case1">1 field → chọn là gửi luôn, không cần nút Gửi.</span>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -449,12 +684,12 @@ nộp qua Ngân hàng Chính sách Xã hội nơi cư trú." [2]</pre>
       </div>
       <div class="node pending" data-n="✓">
         <div class="node-name">collect_pending_clarification() <span class="badge pending">deterministic, ghi State</span></div>
-        <div class="node-desc">Parse khối <code>ask_user_choice</code> cuối response. Không gọi LLM.</div>
+        <div class="node-desc">Parse khối <code>ask_user_form</code> cuối response. Không gọi LLM.</div>
 <pre>{
   <span class="jkey">"origin_node"</span>: <span class="jstr">"QueryTransformationNode"</span>,
   <span class="jkey">"pending_sub_query_id"</span>: <span class="jstr">"SQ2"</span>,
-  <span class="jkey">"missing_field"</span>: <span class="jstr">"dien_mien_giam"</span>,
-  <span class="jkey">"options"</span>: [<span class="jstr">"chinh_sach"</span>, <span class="jstr">"hoc_bong_tai_tro"</span>, <span class="jstr">"vay_von"</span>],
+  <span class="jkey">"missing_fields"</span>: [<span class="jstr">"dien_mien_giam"</span>],
+  <span class="jkey">"options"</span>: [[<span class="jstr">"chinh_sach"</span>, <span class="jstr">"hoc_bong_tai_tro"</span>, <span class="jstr">"vay_von"</span>]],
   <span class="jkey">"retry_count"</span>: 0
 }</pre>
         <div class="node-desc">
@@ -541,13 +776,1052 @@ pending_clarification = None
       <div class="node resolved" data-n="✓">
         <div class="node-name">collect_pending_clarification() <span class="badge resolved">trả None</span></div>
         <div class="node-desc">
-          Response không có khối <code>ask_user_choice</code> → <code>pending_clarification</code>
+          Response không có khối <code>ask_user_form</code> → <code>pending_clarification</code>
           giữ nguyên <code>None</code>. Kết thúc vòng hỏi lại.
         </div>
         <div class="node-desc">
           <code>confirmed_metadata</code> <strong>không</strong> bị xoá — nó sống suốt phiên.
           Mọi câu hỏi sau chạm văn bản chia nhánh theo diện miễn giảm sẽ trả lời
           thẳng, không hỏi lại lần nữa.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="case-head guest" id="case-2">
+    <span class="case-tag">Trường hợp 2 — khách vãng lai, chưa đăng nhập</span>
+    <h2>Học Bổng Cho Người Chưa Có Hồ Sơ</h2>
+    <p>
+      Không có JWT thì không có khoa, không có hệ đào tạo, không có điểm rèn luyện
+      — một câu hỏi tưởng đơn giản đụng ngay <strong>4 thuộc tính chưa biết cùng
+      lúc</strong>. Hỏi lẻ từng cái qua 4 lượt thì gần như chắc chắn mất người
+      dùng, nên <code>ask_user_form</code> gom tất cả vào một form.
+      <strong>Form dưới đây điền và gửi được thật.</strong>
+    </p>
+  </div>
+
+  <!-- ============ CASE 2 / TURN 1 ============ -->
+  <section class="turn">
+    <div class="turn-head">
+      <span class="turn-num">1</span>
+      <div>
+        <div class="turn-title">Lượt 1 — Bốn thuộc tính thiếu, một form</div>
+        <p class="turn-sub">Không có token → <code>GUEST_CONTEXT</code>, chỉ đọc văn bản công khai toàn trường.</p>
+      </div>
+    </div>
+
+    <p class="frontstage-label">Người dùng thấy</p>
+    <div class="chat">
+      <div class="bubble user">
+        <p>sinh viên năm nhất gpa 3.6 thì có được học bổng không?</p>
+      </div>
+      <div class="bubble bot wide">
+        <p>Điều kiện xét học bổng khuyến khích học tập gồm 4 nhóm tiêu chí <span class="cite">[1]</span>. Trong đó có phần áp dụng chung cho mọi đối tượng:</p>
+        <ul>
+          <li>Không bị kỷ luật từ mức <strong>khiển trách</strong> trở lên trong học kỳ xét <span class="cite">[1]</span></li>
+          <li>Đăng ký tối thiểu <strong>14 tín chỉ</strong> trong học kỳ xét <span class="cite">[1]</span></li>
+          <li>Không có học phần nào bị điểm <strong>F</strong> trong học kỳ xét <span class="cite">[1]</span></li>
+        </ul>
+        <p>Riêng <strong>ngưỡng GPA</strong> và <strong>ngưỡng điểm rèn luyện</strong> thì khác nhau tuỳ hệ đào tạo, khóa và chương trình — nên chỉ với con số 3.6 mình chưa đối chiếu được cho bạn.</p>
+        <p class="q">Bạn cho mình biết thêm vài thông tin sau để tra đúng quy định nhé?</p>
+
+        <form class="askform" id="form-case2">
+          <div class="askform-grid">
+            <div class="field">
+              <span class="field-label">Hệ đào tạo <span class="req">*</span></span>
+              <select name="he_dao_tao">
+                <option value="">— Chọn —</option>
+                <option value="chinh_quy_dai_tra">Chính quy đại trà</option>
+                <option value="chinh_quy_clc">Chính quy chất lượng cao</option>
+                <option value="lien_thong">Liên thông</option>
+                <option value="vlvh">Vừa làm vừa học</option>
+              </select>
+            </div>
+            <div class="field">
+              <span class="field-label">Khóa nhập học <span class="req">*</span></span>
+              <select name="khoa_nhap_hoc">
+                <option value="">— Chọn —</option>
+                <option value="k21">K21</option>
+                <option value="k22">K22</option>
+                <option value="k23">K23</option>
+                <option value="k24">K24</option>
+                <option value="k25">K25</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+              <span class="field-label">Chương trình đào tạo <span class="req">*</span></span>
+              <div class="radioset">
+                <label><input type="radio" name="chuong_trinh_dao_tao" value="cu_nhan"><span>Cử nhân</span></label>
+                <label><input type="radio" name="chuong_trinh_dao_tao" value="ky_su"><span>Kỹ sư</span></label>
+                <label><input type="radio" name="chuong_trinh_dao_tao" value="kien_truc_su"><span>Kiến trúc sư</span></label>
+              </div>
+            </div>
+            <div class="field">
+              <span class="field-label">Điểm rèn luyện học kỳ gần nhất <span class="req">*</span></span>
+              <input type="text" name="diem_ren_luyen" inputmode="numeric" placeholder="VD: 85" autocomplete="off">
+            </div>
+          </div>
+          <div class="askform-foot">
+            <span class="form-hint" id="hint-case2">4 field → có nút Gửi. Điền thiếu vẫn gửi được, phần còn lại sẽ hỏi ở lượt sau.</span>
+            <button type="submit" class="btn-submit" id="submit-case2">Gửi thông tin</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node system" data-n="02">
+        <div class="node-name">SecurityContextExtractionNode <span class="badge system">không có JWT</span></div>
+        <div class="node-desc">Thiếu token KHÔNG phải lỗi — cổng tra cứu mở cho thí sinh và phụ huynh. Node dựng bối cảnh hẹp nhất:</div>
+<pre>GUEST_CONTEXT = {
+  <span class="jkey">"user_id"</span>: null,
+  <span class="jkey">"role"</span>: <span class="jstr">"KHACH"</span>,
+  <span class="jkey">"organization_scopes"</span>: [<span class="jstr">"GLOBAL"</span>],
+  <span class="jkey">"max_access_level"</span>: 1
+}</pre>
+      </div>
+      <div class="node system" data-n="03">
+        <div class="node-name">MessageClassificationNode <span class="badge system">LLM</span></div>
+        <div class="node-desc"><code>primary_intent: "academic_advisory"</code>, <code>routing_mode: "SINGLE"</code> — câu đơn, một yêu cầu.</div>
+      </div>
+      <div class="node seal" data-n="10">
+        <div class="node-name">RetrievalFilteringNode <span class="badge seal">phạm vi hẹp</span></div>
+        <div class="node-desc">Payload filter chỉ <code>doc_package = GLOBAL</code> và <code>min_access_level ≤ 1</code>. Quy chế nội bộ từng khoa không lọt vào — khách khai gì cũng không mở rộng được phạm vi này.</div>
+      </div>
+      <div class="node pending" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge pending">4 thuộc tính độc lập</span></div>
+        <div class="node-desc">
+          Rule "PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN" kích hoạt. Ba nguồn
+          đều trống: <code>&lt;academic_user_context&gt;</code> là hồ sơ khách,
+          <code>&lt;student_declared_attributes&gt;</code> chưa có gì, câu hỏi chỉ
+          cho biết GPA và "năm nhất".
+        </div>
+        <div class="split">
+          <div class="lane way1">
+            <div class="lane-head">Trả lời ngay phần không phụ thuộc</div>
+            <p>3 điều kiện chung (kỷ luật, số tín chỉ, điểm F) áp cho mọi đối tượng → đưa ngay, không giữ lại chờ điền form.</p>
+          </div>
+          <div class="lane way2">
+            <div class="lane-head">CÁCH 1 không dùng được ở đây</div>
+            <p>4 hệ × 5 khóa × 3 chương trình → ma trận quá lớn để đọc thành bảng, và điểm rèn luyện là số tự do không phải tập lựa chọn.</p>
+            <p>→ buộc dùng form.</p>
+          </div>
+        </div>
+        <div class="node-desc">4 thuộc tính này <strong>độc lập</strong> — giá trị của cái này không đổi tập lựa chọn của cái kia — nên gom chung một form. Nếu có thuộc tính lồng nhau (VD <code>loai_hinh_clc</code> chỉ tồn tại khi hệ là CLC) thì phải tách sang lượt sau.</div>
+      </div>
+      <div class="node pending" data-n="✓">
+        <div class="node-name">collect_pending_clarification() <span class="badge pending">ghi State</span></div>
+<pre>{
+  <span class="jkey">"origin_node"</span>: <span class="jstr">"QueryTransformationNode"</span>,
+  <span class="jkey">"pending_sub_query_id"</span>: null,
+  <span class="jkey">"missing_fields"</span>: [<span class="jstr">"he_dao_tao"</span>, <span class="jstr">"khoa_nhap_hoc"</span>,
+                      <span class="jstr">"chuong_trinh_dao_tao"</span>, <span class="jstr">"diem_ren_luyen"</span>],
+  <span class="jkey">"options"</span>: [[...4 hệ...], [...5 khóa...], [...3 CT...], null],
+  <span class="jkey">"retry_count"</span>: 0
+}</pre>
+        <div class="node-desc"><code>options[3] = null</code> vì điểm rèn luyện là số tự do → UI render ô nhập thay vì danh sách chọn. Hai mảng luôn song song: <code>len(options) == len(missing_fields)</code>.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="bridge">
+    <span class="bridge-text">state.pending_clarification còn treo → chờ user điền form</span>
+    <span class="bridge-line"></span>
+  </div>
+
+  <!-- ============ CASE 2 / TURN 2 ============ -->
+  <section class="turn">
+    <div class="turn-head">
+      <span class="turn-num">2</span>
+      <div>
+        <div class="turn-title">Lượt 2 — Đối chiếu, nhưng không phán quyết</div>
+        <p class="turn-sub">Guard nhận <code>form_submission</code>, ghi cả 4 giá trị vào <code>confirmed_metadata</code> một lần.</p>
+      </div>
+    </div>
+
+    <p class="frontstage-label">Người dùng thấy</p>
+    <div class="chat">
+      <div class="bubble user" id="c2-user-echo">
+        <p><em>— Điền form phía trên rồi bấm “Gửi thông tin” để xem lượt này —</em></p>
+      </div>
+      <div class="bubble bot wide reveal" id="c2-bot-answer" hidden>
+        <p>Cảm ơn bạn. Đối chiếu <span id="c2-profile-text"></span> với quy định hiện hành <span class="cite">[1]</span>:</p>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr><th>Tiêu chí</th><th>Quy định</th><th>Bạn cung cấp</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>GPA tối thiểu (loại Khá)</td><td><strong id="c2-gpa-req">3.20</strong></td><td>3.60</td></tr>
+              <tr><td>Điểm rèn luyện tối thiểu</td><td><strong>80</strong></td><td id="c2-drl-val">—</td></tr>
+              <tr><td>Tín chỉ đăng ký tối thiểu</td><td><strong>14</strong></td><td class="na">chưa có</td></tr>
+              <tr><td>Không có điểm F</td><td>Bắt buộc</td><td class="na">chưa có</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><em>Lưu ý:</em></p>
+        <ul>
+          <li>Đây là đối chiếu với thông tin bạn tự cung cấp, <strong>chưa được Phòng Đào tạo xác minh</strong>.</li>
+          <li>Kết quả xét học bổng do Hội đồng xét duyệt quyết định trên dữ liệu chính thức, còn phụ thuộc <strong>chỉ tiêu từng học kỳ</strong> và thứ hạng trong ngành <span class="cite">[1]</span>.</li>
+          <li>Để tra cứu chính xác theo hồ sơ của mình, bạn đăng nhập bằng tài khoản sinh viên hoặc liên hệ Phòng Đào tạo.</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node system" data-n="02">
+        <div class="node-name">SecurityContextExtraction — Clarification Guard <span class="badge system">resolve_form</span></div>
+        <div class="node-desc">UI gửi kèm <code>form_submission</code> dạng <code>{field: value}</code>. Guard đối chiếu từng ô với <code>options</code> tương ứng, ghi một lần vào <code>confirmed_metadata</code>.</div>
+<pre id="c2-guard-json">resolve_form(...) → resolved = {4 field}, unresolved = []
+confirmed_metadata.update(resolved)
+pending_clarification = None
+→ route về pending.origin_node</pre>
+        <div class="node-desc">
+          Điền thiếu vẫn giữ phần đã điền: <code>unresolved</code> chỉ còn ô bỏ trống,
+          <code>_keep_only()</code> thu form lại đúng phần đó cho lượt sau. Vứt cả
+          form vì thiếu một ô là cách nhanh nhất để mất người dùng.
+        </div>
+      </div>
+      <div class="node seal" data-n="06">
+        <div class="node-name">QueryTransformationNode (lượt 2) <span class="badge seal">HyDE có thuộc tính</span></div>
+        <div class="node-desc">Ghép 4 thuộc tính vừa chốt vào HyDE doc → truy vấn trúng đúng bảng ngưỡng của hệ/khóa/chương trình đó, thay vì bảng tổng quát.</div>
+      </div>
+      <div class="node resolved" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge resolved">đối chiếu, KHÔNG kết luận</span></div>
+        <div class="node-desc">
+          Thuộc tính đã đủ → không kích hoạt task_2. Nhưng rule
+          <strong>"CẤM TỰ KẾT LUẬN TÌNH TRẠNG HỌC VỤ"</strong> trong
+          <code>task_1.yaml</code> vẫn chặn: được nêu ngưỡng và đặt cạnh con số
+          người dùng đưa, KHÔNG được nói "bạn đủ điều kiện nhận học bổng".
+        </div>
+        <div class="node-desc">
+          Lý do rule này tồn tại thấy rõ ở đây: dữ liệu tự khai chưa xác minh, và
+          học bổng còn phụ thuộc chỉ tiêu lẫn thứ hạng — hai yếu tố không nằm trong
+          bất kỳ thuộc tính nào vừa hỏi.
+        </div>
+      </div>
+      <div class="node resolved" data-n="✓">
+        <div class="node-name">confirmed_metadata sống tiếp <span class="badge resolved">suốt phiên</span></div>
+        <div class="node-desc">4 thuộc tính vừa chốt không bị xoá. Khách hỏi tiếp về học phí, điều kiện tốt nghiệp hay lịch thi đều được trả lời thẳng theo đúng hệ/khóa/chương trình, không hỏi lại lần nào nữa.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="case-head" id="flows">
+    <span class="case-tag">Luồng tham khảo</span>
+    <h2>Chín Luồng, Xếp Theo Tier</h2>
+    <p>
+      Danh sách này bám theo bảng tier và bảng routing trong
+      <code>nodes/kltn_graph_overview.md</code>, không bám theo tên file trong
+      <code>flow_examples/</code> — thư mục đó còn sót các luồng đã gộp và thiếu
+      một số nhánh có trong graph. Mỗi luồng ở đây tương ứng đúng một nhánh
+      routing thật của <code>IntentRoutingNode</code>.
+    </p>
+    <p style="margin-top:.6rem;">
+      <strong>Đã gộp:</strong> <code>chat_single_intent</code>,
+      <code>chat_procedure_steps</code>, <code>chat_calendar_result</code>,
+      <code>chat_document_guide</code> nay là <strong>một luồng duy nhất</strong>
+      (Tier 3) chỉ khác nhau ở <code>mode</code> của node 06 — xem
+      <a href="#flow-t3">Tier 3</a>. Node 09 <code>CalendarLookupNode</code> đã bị xoá.
+      <br>
+      <strong>Đã bổ sung:</strong> ba nhánh Tier 0 và nhánh so sánh thực thể (node 07)
+      — có trong graph nhưng chưa từng có file flow example.
+    </p>
+  </div>
+
+  <!-- ============ TIER 0a ============ -->
+  <section class="turn" id="flow-t0a">
+    <div class="turn-head">
+      <span class="turn-num">0a</span>
+      <div>
+        <div class="turn-title">Chào hỏi — Fast Path, 0 token LLM</div>
+        <p class="turn-sub">Tier 0 · chặn ngay ở node 01, không đi vào graph. <span class="flow-file">chưa có file flow example</span></p>
+      </div>
+    </div>
+    <div class="chain">
+      <span class="pill sys">01 Greeting</span><span class="arrow">→</span>
+      <span class="pill end">END template</span>
+      <span class="pill sys skip">02</span><span class="pill sys skip">03</span><span class="pill sys skip">04</span>
+    </div>
+    <p class="frontstage-label">Sinh viên thấy</p>
+    <div class="chat">
+      <div class="bubble user"><p>Chào bot</p></div>
+      <div class="bubble bot">
+        <p>Xin chào bạn! Mình là Trợ Lý AI Học Vụ của Nhà trường. Bạn có thể hỏi mình về:</p>
+        <ul>
+          <li>📜 Quy chế đào tạo &amp; điều kiện học bổng</li>
+          <li>💰 Định mức học phí &amp; hạn nộp</li>
+          <li>🔄 Điều kiện học song hành &amp; rút học phần</li>
+          <li>📅 Tra cứu lịch thi &amp; bảng điểm cá nhân</li>
+        </ul>
+        <p>Bạn cần hỗ trợ thông tin gì hôm nay?</p>
+      </div>
+    </div>
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node system" data-n="01">
+        <div class="node-name">GreetingDetectionNode <span class="badge system">regex, 0 LLM</span></div>
+<pre><span class="jkey">if</span> len(conversation_history) != 0: <span class="jkey">return</span> False   <span class="jstr"># chỉ lượt đầu</span>
+re.match(r"^(xin\s+)?chào(\s+bot|\s+ad|\s+em)?$", q)  → khớp</pre>
+        <div class="node-desc">
+          Điều kiện <code>len(history) == 0</code> là then chốt: câu chào ở lượt 2 trở đi
+          <strong>không</strong> đi Fast Path, mà vào luồng chính và được node 03 phân loại
+          thành <code>social_chat</code>. Nếu chặn cả lượt sau, câu <em>"Chào bot, cho em hỏi
+          điều kiện học bổng"</em> sẽ bị trả template chào và mất luôn câu hỏi thật.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TIER 0b ============ -->
+  <section class="turn" id="flow-t0b">
+    <div class="turn-head">
+      <span class="turn-num">0b</span>
+      <div>
+        <div class="turn-title">Xã giao — template tĩnh sau phân loại</div>
+        <p class="turn-sub">Tier 0 · node 04 kết thúc luôn, không gọi node xử lý nào. <span class="flow-file">chưa có file flow example</span></p>
+      </div>
+    </div>
+    <div class="chain">
+      <span class="pill sys">01</span><span class="arrow">→</span>
+      <span class="pill sys">02</span><span class="arrow">→</span>
+      <span class="pill sys">03 Classify</span><span class="arrow">→</span>
+      <span class="pill sys">04 Route</span><span class="arrow">→</span>
+      <span class="pill end">END xã giao</span>
+    </div>
+    <p class="frontstage-label">Sinh viên thấy</p>
+    <div class="chat">
+      <div class="bubble user"><p>Ok mình hiểu rồi, cảm ơn bạn nhé!</p></div>
+      <div class="bubble bot"><p>Rất vui vì đã hỗ trợ được bạn. Nếu còn thắc mắc gì về học vụ, bạn cứ hỏi mình nhé!</p></div>
+    </div>
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node system" data-n="03">
+        <div class="node-name">MessageClassificationNode <span class="badge system">LLM</span></div>
+<pre>{"primary_intent": <span class="jstr">"social_chat"</span>, "routing_mode": null, "confidence": 0.99}</pre>
+      </div>
+      <div class="node resolved" data-n="04">
+        <div class="node-name">IntentRoutingNode <span class="badge resolved">EndSocialTemplate</span></div>
+        <div class="node-desc">
+          Đây là nhánh <strong>duy nhất</strong> mà router kết thúc lượt ngay tại chỗ, không
+          chuyển sang node xử lý nào. Cũng là đích của câu chào ở lượt thứ 2 trở đi — lý do
+          taxonomy không cần nhãn <code>greeting</code> riêng.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TIER 0c ============ -->
+  <section class="turn" id="flow-t0c">
+    <div class="turn-head">
+      <span class="turn-num">0c</span>
+      <div>
+        <div class="turn-title">Ngoài phạm vi — từ chối khéo</div>
+        <p class="turn-sub">Tier 0 · node 05B, template tĩnh không gọi LLM. <span class="flow-file">chưa có file flow example</span></p>
+      </div>
+    </div>
+    <div class="chain">
+      <span class="pill sys">01–04</span><span class="arrow">→</span>
+      <span class="pill alt">05B OffTopicReject</span><span class="arrow">→</span>
+      <span class="pill end">END từ chối</span>
+    </div>
+    <p class="frontstage-label">Người dùng thấy</p>
+    <div class="chat">
+      <div class="bubble user"><p>Cho mình xin công thức nấu phở bò với</p></div>
+      <div class="bubble bot">
+        <p>Xin lỗi bạn, mình chỉ hỗ trợ được các câu hỏi liên quan đến học vụ của Nhà trường.</p>
+        <p>Ví dụ mình có thể giúp bạn:</p>
+        <ul>
+          <li>Tra cứu điều kiện học bổng, cảnh báo học vụ</li>
+          <li>Giải thích quy chế thi cử, đăng ký môn học</li>
+          <li>Tính GPA, học phí theo ngành</li>
+          <li>Hướng dẫn thủ tục xin giấy tờ học vụ</li>
+        </ul>
+        <p>Bạn có câu hỏi nào về học vụ không ạ?</p>
+      </div>
+    </div>
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node alt" data-n="05B">
+        <div class="node-name">OffTopicRejectNode <span class="badge pending">off_topic_reject.yaml</span></div>
+        <div class="node-desc">
+          Template tĩnh, không gọi LLM — vừa tiết kiệm, vừa đảm bảo lời từ chối luôn
+          nhất quán. Bắt buộc liệt kê 3–5 ví dụ việc hệ thống CÓ THỂ làm: từ chối trơ
+          trọi khiến người dùng bỏ đi, trong khi họ có thể đang có câu hỏi học vụ thật
+          mà chưa biết diễn đạt.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TIER 1 ============ -->
+  <section class="turn" id="flow-t1">
+    <div class="turn-head">
+      <span class="turn-num">1</span>
+      <div>
+        <div class="turn-title">Kiến thức phổ thông — trả lời thẳng, không RAG</div>
+        <p class="turn-sub">Tier 1 · luồng ngắn nhất có gọi LLM. <span class="flow-file">flow_examples/06_chat_direct_llm.md</span></p>
+      </div>
+    </div>
+    <div class="chain">
+      <span class="pill sys">01–04</span><span class="arrow">→</span>
+      <span class="pill end">05A DirectLLM</span>
+      <span class="pill rag skip">06</span><span class="pill rag skip">10</span>
+      <span class="pill rag skip">11</span><span class="pill rag skip">12</span>
+    </div>
+    <p class="frontstage-label">Sinh viên thấy</p>
+    <div class="chat">
+      <div class="bubble user"><p>Tín chỉ (credit) là gì? Khác gì với đơn vị học trình?</p></div>
+      <div class="bubble bot">
+        <p><strong>Tín chỉ (Credit)</strong> là đơn vị đo khối lượng học tập. 1 tín chỉ tương đương 15 tiết lý thuyết, hoặc khối lượng thực hành / tự học tương ứng.</p>
+        <p><strong>Đơn vị học trình (ĐVHT)</strong> là khái niệm cũ hơn, phổ biến trước năm 2007. Về bản chất 1 ĐVHT ≈ 1 tín chỉ, nhưng cách tính điểm tích lũy và cấu trúc chương trình có thể khác nhau tùy hệ thống.</p>
+        <p>Nếu bạn muốn biết số tín chỉ tối đa / tối thiểu theo quy chế riêng của Nhà trường, mình tra cứu giúp bạn ngay.</p>
+      </div>
+    </div>
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node system" data-n="03">
+        <div class="node-name">MessageClassificationNode <span class="badge system">ngưỡng cao</span></div>
+<pre>{"primary_intent": <span class="jstr">"general_knowledge"</span>, "routing_mode": null, "confidence": 0.94}</pre>
+        <div class="node-desc">Node 05A chỉ kích hoạt khi <code>confidence ≥ 0.90</code>.</div>
+      </div>
+      <div class="node resolved" data-n="05A">
+        <div class="node-name">DirectLLMNode <span class="badge resolved">chat_direct_llm.yaml</span></div>
+        <div class="node-desc">Không phải node 12 — node riêng, nhưng ráp prompt giống hệt: template chính + 4 khối <code>common/</code>, <strong>không</strong> có <code>prepared_context</code> nên không có gì để trích dẫn.</div>
+      </div>
+      <div class="node pending" data-n="⚠">
+        <div class="node-name">Rủi ro nằm ở node 03, không phải 05A</div>
+        <div class="node-desc">
+          Gán nhầm một câu hỏi quy chế thành <code>general_knowledge</code> thì LLM trả lời
+          trôi chảy bằng kiến thức chung về đại học Việt Nam — nghe hợp lý, nhưng không phải
+          quy định của trường này, và <strong>không có trích dẫn nào để người đọc phát hiện</strong>.
+          Luồng RAG sai còn nguồn để đối chiếu; luồng này sai thì không. Đó là lý do ngưỡng
+          confidence đặt cao hơn mọi nhánh khác.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TIER 2 ============ -->
+  <section class="turn" id="flow-t2">
+    <div class="turn-head">
+      <span class="turn-num">2</span>
+      <div>
+        <div class="turn-title">Tính toán — Calculator Tool, không đi qua RAG</div>
+        <p class="turn-sub">Tier 2 · bỏ hẳn ba node RAG. <span class="flow-file">flow_examples/04_chat_calculation_result.md</span></p>
+      </div>
+    </div>
+    <div class="chain">
+      <span class="pill sys">01–04</span><span class="arrow">→</span>
+      <span class="pill alt">08 Calculation</span><span class="arrow">→</span>
+      <span class="pill rag skip">06</span><span class="pill rag skip">10</span><span class="pill rag skip">11</span>
+      <span class="arrow">→</span>
+      <span class="pill end">12 Synthesis</span>
+    </div>
+    <p class="frontstage-label">Sinh viên thấy</p>
+    <div class="chat">
+      <div class="bubble user"><p>GPA học kỳ này của tôi là bao nhiêu?</p></div>
+      <div class="bubble bot wide">
+        <p><strong>Kết quả học kỳ 1 năm học 2024-2025:</strong></p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Môn học</th><th>TC</th><th>Điểm</th><th>Hệ 4</th></tr></thead>
+            <tbody>
+              <tr><td>Lập trình Web</td><td>3</td><td>A</td><td>4.0</td></tr>
+              <tr><td>Cơ sở dữ liệu</td><td>3</td><td>B+</td><td>3.5</td></tr>
+              <tr><td>Mạng máy tính</td><td>3</td><td>B</td><td>3.0</td></tr>
+              <tr><td>Tiếng Anh 3</td><td>2</td><td>A-</td><td>3.7</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul>
+          <li>GPA học kỳ: <strong>3.54</strong>/4.0</li>
+          <li>GPA tích lũy: <strong>3.12</strong>/4.0</li>
+          <li>Tổng tín chỉ tích lũy: <strong>68 TC</strong></li>
+        </ul>
+      </div>
+    </div>
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node system" data-n="03">
+        <div class="node-name">MessageClassificationNode <span class="badge system">routing_mode = null</span></div>
+<pre>{"primary_intent": <span class="jstr">"academic_calculation"</span>, "routing_mode": null}</pre>
+        <div class="node-desc"><code>null</code> vì nhánh này không qua RAG — không có gì để phân rã thành sub-query.</div>
+      </div>
+      <div class="node alt" data-n="8a">
+        <div class="node-name">CalculationNode — trích tham số <span class="badge pending">calculation_extractor.yaml</span></div>
+<pre>{
+  <span class="jkey">"calculation_type"</span>: <span class="jstr">"gpa_calculation"</span>,
+  <span class="jkey">"parameters"</span>: {<span class="jkey">"student_id"</span>: <span class="jstr">"SV20247799"</span>,
+                   <span class="jkey">"semester"</span>: <span class="jstr">"HK1/2024"</span>,
+                   <span class="jkey">"source"</span>: <span class="jstr">"DB_AUTO_FETCH"</span>},
+  <span class="jkey">"missing_params"</span>: []
+}</pre>
+        <div class="node-desc">
+          Đây là <strong>Type A</strong>: field cần hỏi biết trước từ schema, kiểm tra NGAY
+          trước khi tính. Khác hẳn Type B của Tier 3 — nơi field chỉ lộ ra sau khi đọc văn bản.
+          Thiếu tham số thì rẽ sang <code>AskUserClarificationNode</code>.
+        </div>
+      </div>
+      <div class="node alt" data-n="8b">
+        <div class="node-name">Python Calculator Tool <span class="badge pending">không gọi LLM</span></div>
+<pre>GPA = Σ(grade_point × credits) / Σ(credits)
+    = (4.0×3 + 3.5×3 + 3.0×3 + 3.7×2) / 11 = 3.54</pre>
+        <div class="node-desc"><strong>LLM không tự làm phép tính.</strong> Số học là thứ nó sai nhiều nhất và sai lặng lẽ nhất — không có trích dẫn nào để người đọc phát hiện một con số bị lệch.</div>
+      </div>
+      <div class="node resolved" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge resolved">chat_calculation_result.yaml</span></div>
+        <div class="node-desc">Chỉ 4 khối <code>common/</code> — <strong>không</strong> có <code>academic_domain_rules</code>, <code>citation_rules</code>, <code>prepared_context</code>. Không RAG thì không có gì để trích dẫn.</div>
+      </div>
+    </div>
+    <p class="stale">⚠️ Bản gốc kết thúc bằng <em>"GPA 3.54 — Xếp loại Giỏi"</em> và <em>"bạn đủ điều kiện đăng ký tối đa 28 TC"</em>. Cả hai vi phạm rule <strong>"CẤM TỰ KẾT LUẬN TÌNH TRẠNG HỌC VỤ"</strong> trong <code>task_1.yaml</code> — được trả kết quả tính toán, nhưng cấm suy ra xếp loại hay quyền lợi từ con số. Ví dụ trên đã bỏ hai câu này; file gốc chưa sửa.</p>
+  </section>
+
+  <!-- ============ TIER 3 ============ -->
+  <section class="turn" id="flow-t3">
+    <div class="turn-head">
+      <span class="turn-num">3</span>
+      <div>
+        <div class="turn-title">Advisory hợp nhất — hỏi quy chế, ba lượt đào sâu</div>
+        <p class="turn-sub">Tier 3 · gộp từ 4 luồng cũ. Hội thoại dưới đây thuần <code>academic_advisory</code> (mode HyDE). <span class="flow-file">flow_examples/01 + 03 (đã lỗi thời)</span></p>
+      </div>
+    </div>
+    <div class="chain">
+      <span class="pill sys">01–04</span><span class="arrow">→</span>
+      <span class="pill rag">06 QueryTransform <em>4 mode</em></span><span class="arrow">→</span>
+      <span class="pill rag">10 Retrieval</span><span class="arrow">→</span>
+      <span class="pill rag">11 Rerank</span><span class="arrow">→</span>
+      <span class="pill end">12 Synthesis</span>
+    </div>
+
+    <p class="node-desc" style="max-width:72ch;margin:.2rem 0 .9rem;">
+      Bốn intent đi chung <strong>đúng một chuỗi node</strong>. Khác biệt duy nhất là
+      <code>mode</code> của node 06 — quyết định hình dạng truy vấn đưa vào VectorDB — và
+      quy tắc định dạng đầu ra, nay nằm chung trong <code>academic_domain_rules.yaml</code>
+      thay vì 4 template riêng.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Intent</th><th>mode (node 06)</th><th>Hình dạng truy vấn sinh ra</th><th>Định dạng đầu ra</th></tr></thead>
+        <tbody>
+          <tr><td><code>academic_advisory</code> <span class="flag live">ví dụ bên dưới</span></td><td><strong>HyDE</strong></td><td>Đoạn trả lời giả định văn phong quy chế</td><td>Văn xuôi + gạch đầu dòng điều kiện</td></tr>
+          <tr><td><code>academic_procedure</code></td><td><strong>PROCEDURE</strong></td><td>“Quy trình / các bước để [hành động]”</td><td>Bước 1…N, mỗi bước: ai · làm gì · ở đâu · bao lâu</td></tr>
+          <tr><td><code>academic_document</code></td><td><strong>DOCUMENT</strong></td><td>“Điều kiện / hướng dẫn xin cấp [giấy tờ] tại [đơn vị]”</td><td>Hồ sơ + nơi nộp + lệ phí + thời gian</td></tr>
+          <tr><td><code>academic_calendar</code></td><td><strong>HyDE</strong></td><td>Như advisory — lịch là văn bản thông báo thường</td><td>Mốc thời gian kèm học kỳ / năm học</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="frontstage-label">Hội thoại 3 lượt — đăng ký học phần cho học kỳ tới</p>
+    <div class="chat">
+      <div class="turn-sep"><span>Lượt 1 · Type B → Cách 1 (bảng), không hỏi</span></div>
+      <div class="bubble user">
+        <p>Kỳ tới em muốn đăng ký nhiều môn một chút cho nhanh ra trường, mà nghe nói có giới hạn
+        số tín chỉ. Tối đa em được đăng ký bao nhiêu ạ?</p>
+      </div>
+      <div class="bubble bot wide">
+        <p>Giới hạn tín chỉ mỗi học kỳ khác nhau tuỳ hệ đào tạo, và có nới thêm nếu GPA kỳ trước cao <span class="cite">[1]</span>:</p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Hệ đào tạo</th><th>Tối thiểu</th><th>Tối đa</th><th>Tối đa nếu GPA kỳ trước ≥ 3.20</th></tr></thead>
+            <tbody>
+              <tr><td>Chính quy đại trà</td><td>14 TC</td><td><strong>25 TC</strong></td><td><strong>28 TC</strong></td></tr>
+              <tr><td>Chính quy chất lượng cao</td><td>14 TC</td><td><strong>28 TC</strong></td><td><strong>32 TC</strong></td></tr>
+              <tr><td>Liên thông</td><td>10 TC</td><td><strong>22 TC</strong></td><td class="na">Không nới</td></tr>
+              <tr><td>Vừa làm vừa học</td><td>8 TC</td><td><strong>18 TC</strong></td><td class="na">Không nới</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><em>Áp dụng chung cho mọi hệ:</em></p>
+        <ul>
+          <li>Học kỳ cuối khóa <strong>không áp mức tối thiểu</strong> <span class="cite">[1]</span></li>
+          <li>Học kỳ hè có trần riêng là <strong>8 TC</strong>, tính tách khỏi học kỳ chính <span class="cite">[1]</span></li>
+        </ul>
+        <p>Bạn đối chiếu hàng tương ứng với hệ đào tạo mình đang học nhé.</p>
+      </div>
+
+      <div class="turn-sep"><span>Lượt 2 · Type B → Cách 2, form 3 field cùng lúc</span></div>
+      <div class="bubble user">
+        <p>Em còn 2 môn kỳ trước bị điểm D muốn đăng ký học cải thiện. Mấy môn cải thiện đó có bị
+        tính vào trần tín chỉ luôn không ạ?</p>
+      </div>
+      <div class="bubble bot wide">
+        <p>Chỗ này <strong>quy chế 2021 và 2023 quy định ngược nhau</strong> — bản cũ không tính học
+        phần cải thiện vào trần, bản mới thì có. Trần cụ thể lại phụ thuộc hệ đào tạo, và để biết
+        bạn còn đăng ký thêm được bao nhiêu thì cần biết kỳ này bạn đã đăng ký mấy tín chỉ rồi <span class="cite">[2]</span>.</p>
+        <p class="q">Bạn cho mình biết thêm ba thông tin sau nhé?</p>
+
+        <form class="askform" id="form-t3">
+          <div class="askform-grid">
+            <div class="field">
+              <span class="field-label">Khóa nhập học <span class="req">*</span></span>
+              <select name="khoa_nhap_hoc">
+                <option value="">— Chọn —</option>
+                <option value="k21">K21</option>
+                <option value="k22">K22</option>
+                <option value="k23">K23</option>
+                <option value="k24">K24</option>
+                <option value="k25">K25</option>
+              </select>
+            </div>
+            <div class="field">
+              <span class="field-label">Hệ đào tạo <span class="req">*</span></span>
+              <select name="he_dao_tao">
+                <option value="">— Chọn —</option>
+                <option value="chinh_quy_dai_tra">Chính quy đại trà</option>
+                <option value="chinh_quy_clc">Chính quy chất lượng cao</option>
+                <option value="lien_thong">Liên thông</option>
+                <option value="vlvh">Vừa làm vừa học</option>
+              </select>
+            </div>
+            <div class="field">
+              <span class="field-label">Số TC đã đăng ký kỳ này <span class="req">*</span></span>
+              <input type="text" name="so_tin_chi" inputmode="numeric" placeholder="VD: 18" autocomplete="off">
+            </div>
+          </div>
+          <div class="askform-foot">
+            <span class="form-hint" id="hint-t3">3 field → có nút Gửi. Điền thiếu vẫn gửi được, phần còn lại hỏi ở lượt sau.</span>
+            <button type="submit" class="btn-submit" id="submit-t3">Gửi thông tin</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="bubble bot wide reveal" id="t3-answer2" hidden>
+        <p>Cảm ơn bạn. Với <span id="t3-profile"></span>, quy định áp dụng là <strong id="t3-quyche"></strong> <span class="cite">[2]</span>:</p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Tiêu chí</th><th>Quy định</th><th>Trường hợp của bạn</th></tr></thead>
+            <tbody>
+              <tr><td>Học phần cải thiện tính vào trần?</td><td><strong id="t3-tinhtran"></strong></td><td id="t3-tinhtran-2">—</td></tr>
+              <tr><td>Trần tín chỉ học kỳ chính</td><td><strong id="t3-tran"></strong></td><td id="t3-dadk">—</td></tr>
+              <tr><td>Điểm cũ sau khi học cải thiện</td><td id="t3-diemcu"></td><td class="na">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><em>Lưu ý:</em></p>
+        <ul>
+          <li>Đây là đối chiếu với thông tin bạn tự cung cấp, <strong>chưa được Phòng Đào tạo xác minh</strong>.</li>
+          <li>Cổng đăng ký sẽ tự chặn nếu vượt trần, nhưng nên tính trước để khỏi phải huỷ môn <span class="cite">[2]</span>.</li>
+        </ul>
+      </div>
+
+      <div class="turn-sep"><span>Lượt 3 · tính thử — dùng lại thuộc tính đã chốt, không hỏi lại</span></div>
+      <div class="bubble user">
+        <p>Vậy nếu em đăng ký thêm 6 tín chỉ cải thiện nữa thì có vượt trần không ạ?</p>
+      </div>
+      <div class="bubble bot" id="t3-answer3">
+        <p><em>— Điền form ở lượt 2 để xem câu trả lời phụ thuộc khóa và hệ đào tạo —</em></p>
+      </div>
+    </div>
+
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="subturn-head">Lượt 1 — trả lời phân nhánh, không hỏi</div>
+      <div class="node system" data-n="03">
+        <div class="node-name">MessageClassificationNode <span class="badge system">SINGLE dù câu dài</span></div>
+<pre>{"primary_intent": <span class="jstr">"academic_advisory"</span>, "routing_mode": <span class="jstr">"SINGLE"</span>, "confidence": 0.96}</pre>
+        <div class="node-desc">
+          Câu có phần kể lể ("muốn đăng ký nhiều môn cho nhanh ra trường", "nghe nói có giới hạn")
+          nhưng chỉ mang <strong>một yêu cầu</strong>: trần tín chỉ là bao nhiêu → <code>SINGLE</code>.
+        </div>
+      </div>
+      <div class="node seal" data-n="06">
+        <div class="node-name">QueryTransformationNode <span class="badge seal">mode HyDE</span></div>
+<pre>"Theo Quy chế Đào tạo, khối lượng học tập tối đa sinh viên được
+đăng ký trong một học kỳ chính là ... tín chỉ. Sinh viên có điểm
+trung bình học kỳ liền trước đạt loại Giỏi được đăng ký vượt mức."</pre>
+        <div class="node-desc">HyDE bỏ hết phần kể lể, chỉ giữ nội dung quy chế cần tìm — văn phong hành chính khớp với văn bản hành chính tốt hơn là khớp với câu nói thường ngày của sinh viên.</div>
+      </div>
+      <div class="node pending" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge pending">Type B → CÁCH 1</span></div>
+        <div class="node-desc">
+          Văn bản chia 4 nhánh theo hệ đào tạo, cùng bộ tiêu chí (tối thiểu · tối đa · mức nới)
+          → dựng được bảng. Hệ đào tạo là thứ sinh viên đương nhiên biết. Đủ hai điều kiện
+          CÁCH 1 → <strong>trả lời phân nhánh, không hỏi</strong>.
+        </div>
+        <div class="node-desc">
+          Cột "tối đa nếu GPA ≥ 3.20" có hai ô ghi "Không nới" — <strong>không được để trống</strong>
+          và cũng không được suy giá trị từ hàng khác. Ô trống khiến người đọc tưởng thiếu dữ liệu,
+          trong khi thực tế văn bản quy định rõ là không áp dụng.
+        </div>
+      </div>
+      <div class="node resolved" data-n="✓">
+        <div class="node-name">confirmed_metadata sau lượt 1 <span class="badge resolved">vẫn rỗng</span></div>
+<pre>confirmed_metadata = {}   <span class="jstr"># CÁCH 1 không thu được thuộc tính nào</span></pre>
+        <div class="node-desc">
+          <strong>Đây là cái giá của CÁCH 1.</strong> Trả lời trọn trong một lượt, nhưng hệ thống
+          <em>không học được</em> sinh viên thuộc hệ nào — nên lượt sau, khi gặp nhánh không dựng
+          được bảng, vẫn phải hỏi. Đánh đổi chấp nhận được vì phần lớn hội thoại chỉ 1–2 lượt,
+          nhưng nó giải thích vì sao lượt 2 buộc phải hỏi.
+        </div>
+      </div>
+
+      <div class="subturn-head">Lượt 2 — ba thuộc tính đan nhau, buộc dùng form</div>
+      <div class="node seal" data-n="06">
+        <div class="node-name">QueryTransformationNode <span class="badge seal">vẫn mode HyDE</span></div>
+        <div class="node-desc">Cùng intent <code>academic_advisory</code>, cùng mode. Chuỗi node không đổi suốt cả ba lượt — thứ thay đổi chỉ là kết cục Type B ở node 12.</div>
+      </div>
+      <div class="node pending" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge pending">Type B → CÁCH 2, 3 field</span></div>
+        <div class="node-desc">
+          CÁCH 1 <strong>không dùng được</strong>: câu trả lời phụ thuộc đồng thời khóa nhập học
+          (5 giá trị, quyết định áp quy chế 2021 hay 2023) × hệ đào tạo (4) × số tín chỉ đã đăng ký
+          (số tự do). Tổ hợp vượt xa trần 6 dòng, và tín chỉ không phải tập giá trị hữu hạn để làm cột.
+        </div>
+<pre>{"type": <span class="jstr">"ask_user_form"</span>, "fields": [
+  {"field": <span class="jstr">"khoa_nhap_hoc"</span>, "options": [...5 khóa...]},
+  {"field": <span class="jstr">"he_dao_tao"</span>,    "options": [...4 hệ...]},
+  {"field": <span class="jstr">"so_tin_chi"</span>,    "options": null}
+]}</pre>
+        <div class="node-desc">
+          Ba field <strong>độc lập</strong> — giá trị cái này không đổi tập lựa chọn của cái kia
+          — nên gom chung một form. Hỏi lẻ qua ba lượt trong khi cổng đăng ký đang mở là cách
+          nhanh nhất để sinh viên bỏ đi và tự đoán.
+        </div>
+        <div class="node-desc">
+          <code>so_tin_chi</code> có <code>options: null</code> → UI render ô nhập tự do.
+          Form nhiều hơn 1 field → xuất hiện <strong>nút Gửi</strong>.
+        </div>
+      </div>
+      <div class="node pending" data-n="⚠">
+        <div class="node-name">Hai văn bản mâu thuẫn — không được tự chọn một bản</div>
+        <div class="node-desc">
+          Quy chế 2021 và 2023 quy định ngược nhau về việc học phần cải thiện có tính vào trần.
+          Rule <strong>HIỆU LỰC VĂN BẢN</strong> trong <code>task_1.yaml</code> cấm tự chọn bản mới
+          rồi trình bày như quy định duy nhất — vì bản cũ vẫn còn hiệu lực với các khóa tuyển
+          sinh trước. Khóa nhập học chính là thứ quyết định áp bản nào, nên nó phải nằm trong form.
+        </div>
+      </div>
+
+      <div class="subturn-head">Lượt 3 — tính thử, không hỏi lại lần nào</div>
+      <div class="node system" data-n="02">
+        <div class="node-name">Clarification Guard <span class="badge system">ghi 3 field một lần</span></div>
+<pre id="t3-guard">resolve_form(...) → resolved = {3 field}, unresolved = []
+confirmed_metadata.update(resolved)
+pending_clarification = None
+→ route về pending.origin_node</pre>
+      </div>
+      <div class="node resolved" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge resolved">Type B không kích hoạt</span></div>
+        <div class="node-desc">
+          Văn bản trần tín chỉ vẫn chia nhánh theo hệ đào tạo — nhưng
+          <code>&lt;student_declared_attributes&gt;</code> đã có đủ ba thuộc tính
+          → xác định được ở nguồn thứ hai trong ba nguồn → <strong>trả lời thẳng, không hỏi lại</strong>.
+        </div>
+        <div class="node-desc">
+          Phép cộng "đã đăng ký + 6 TC cải thiện" là <strong>số học thuần</strong> trên dữ liệu người
+          dùng tự khai, thuộc ngoại lệ được phép trả kết quả. Nhưng node vẫn không nói
+          "bạn đăng ký được" — cổng đăng ký còn kiểm tra điều kiện tiên quyết của từng học phần và
+          lớp còn chỗ hay không, hai thứ không nằm trong thuộc tính nào vừa hỏi.
+        </div>
+      </div>
+    </div>
+    <p class="stale">⚠️ Ba lượt trên chạy đúng luồng của <a href="#case-1">Trường hợp 1</a> và <a href="#case-2">Trường hợp 2</a> ở đầu trang — cùng Tier 3, khác kịch bản hỏi lại. Ba mode còn lại (PROCEDURE / DOCUMENT / Calendar) dùng chung chuỗi node này, chỉ đổi hình dạng truy vấn ở node 06 theo bảng phía trên.</p>
+  </section>
+
+
+  <!-- ============ TIER 4a ============ -->
+  <section class="turn" id="flow-t4a">
+    <div class="turn-head">
+      <span class="turn-num">4a</span>
+      <div>
+        <div class="turn-title">Đa ý — phân rã câu ghép, fan-out song song</div>
+        <p class="turn-sub">Tier 4 · <code>routing_mode = MULTI</code> ngay từ node 03. <span class="flow-file">flow_examples/02_chat_multi_intent_synthesis.md</span></p>
+      </div>
+    </div>
+    <div class="chain">
+      <span class="pill sys">01–04</span><span class="arrow">→</span>
+      <span class="pill rag">06 Decompose</span><span class="arrow">→</span>
+      <span class="pill rag">10 ×N song song</span><span class="arrow">→</span>
+      <span class="pill rag">11 Rerank</span><span class="arrow">→</span>
+      <span class="pill end">12 Fan-in</span>
+    </div>
+    <p class="frontstage-label">Sinh viên thấy</p>
+    <div class="chat">
+      <div class="bubble user"><p>Điều kiện xét tốt nghiệp và điều kiện được đăng ký học song hành khác nhau như thế nào?</p></div>
+      <div class="bubble bot wide">
+        <p>Hai nhóm điều kiện khác nhau ở cả bốn tiêu chí:</p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Tiêu chí</th><th>Xét tốt nghiệp <span class="cite">[1]</span></th><th>Học song hành <span class="cite">[2]</span></th></tr></thead>
+            <tbody>
+              <tr><td>GPA tích lũy</td><td>≥ <strong>2.00</strong>/4.0</td><td>≥ <strong>2.50</strong>/4.0</td></tr>
+              <tr><td>Tín chỉ</td><td>Đủ số TC chương trình</td><td>≥ <strong>60 TC</strong> đã tích lũy</td></tr>
+              <tr><td>Học phí</td><td>Hoàn thành nghĩa vụ</td><td class="na">Không yêu cầu</td></tr>
+              <tr><td>Kỷ luật</td><td>Rèn luyện không Kém</td><td>Không bị cảnh cáo học vụ</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node system" data-n="03">
+        <div class="node-name">MessageClassificationNode <span class="badge system">MULTI</span></div>
+<pre>{"primary_intent": <span class="jstr">"academic_advisory"</span>, "routing_mode": <span class="jstr">"MULTI"</span>, "confidence": 0.93}</pre>
+        <div class="node-desc"><code>MULTI</code> phân loại theo <strong>cấu trúc câu</strong> — câu ghép mang 2 yêu cầu tách biệt — chứ không theo số thực thể. Một câu đơn nhắc 2 ngành vẫn là <code>SINGLE</code>.</div>
+      </div>
+      <div class="node seal" data-n="06">
+        <div class="node-name">QueryTransformationNode <span class="badge seal">multi_query_decomposer.yaml</span></div>
+<pre>SQ1  "Quy định về điều kiện học vụ để được xét tốt nghiệp
+      chương trình đại học chính quy"
+SQ2  "Quy định về điều kiện đăng ký học song hành hai
+      chương trình đào tạo đại học"</pre>
+        <div class="node-desc">
+          Yêu cầu cứng: mỗi sub-query phải <strong>tự đứng được</strong> — cấm đại từ
+          "nó", "ngành đó". Chúng đi vào VectorDB tách rời, không chia sẻ ngữ cảnh với
+          câu gốc lẫn với nhau.
+        </div>
+      </div>
+      <div class="node resolved" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge resolved">chat_multi_intent_synthesis.yaml</span></div>
+        <div class="node-desc">
+          Nhận thêm placeholder <code>{sub_queries_list}</code> để biết ngữ cảnh gộp đến từ
+          những câu hỏi con nào. Đây cũng là luồng mà <code>pending_sub_query_id</code> phát
+          huy tác dụng khi một sub-query còn thiếu thuộc tính — xem <a href="#case-1">Trường hợp 1</a>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TIER 4b ============ -->
+  <section class="turn" id="flow-t4b">
+    <div class="turn-head">
+      <span class="turn-num">4b</span>
+      <div>
+        <div class="turn-title">So sánh thực thể — node 07 riêng biệt</div>
+        <p class="turn-sub">Tier 4 · nhánh duy nhất không đi qua node 06. Hội thoại 3 lượt, chi phí tăng dần. <span class="flow-file">chưa có file flow example</span></p>
+      </div>
+    </div>
+    <div class="chain">
+      <span class="pill sys">01–04</span><span class="arrow">→</span>
+      <span class="pill rag">07 Comparison</span><span class="arrow">→</span>
+      <span class="pill rag">10 ×N song song</span><span class="arrow">→</span>
+      <span class="pill rag">11 Rerank</span><span class="arrow">→</span>
+      <span class="pill end">12 Fan-in</span>
+      <span class="pill rag skip">06</span>
+    </div>
+
+    <p class="node-desc" style="max-width:72ch;margin:.2rem 0 .9rem;">
+      Node 07 phân rã theo tích <strong>thực thể × tiêu chí</strong>. Số truy vấn song song
+      bằng tích hai chiều đó, nên đây là nhánh <strong>đắt nhất</strong> trong graph — hội
+      thoại dưới đây cho thấy chi phí leo thang thế nào chỉ sau ba câu hỏi.
+    </p>
+
+    <p class="frontstage-label">Hội thoại 3 lượt — sinh viên cân nhắc chuyển ngành</p>
+    <div class="chat">
+      <div class="turn-sep"><span>Lượt 1 · 2 thực thể × 1 tiêu chí = 2 truy vấn</span></div>
+      <div class="bubble user"><p>Ngành CNTT và Kế toán học phí mỗi tín chỉ chênh nhau bao nhiêu ạ?</p></div>
+      <div class="bubble bot wide">
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Tiêu chí</th><th>Công nghệ thông tin</th><th>Kế toán</th></tr></thead>
+            <tbody>
+              <tr><td>Định mức / tín chỉ</td><td><strong>520.000đ</strong> <span class="cite">[1]</span></td><td><strong>480.000đ</strong> <span class="cite">[2]</span></td></tr>
+              <tr><td>Chênh lệch</td><td colspan="2"><strong>40.000đ/tín chỉ</strong> — học kỳ 15 TC chênh khoảng 600.000đ</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="turn-sep"><span>Lượt 2 · 3 thực thể × 3 tiêu chí = 9 truy vấn</span></div>
+      <div class="bubble user">
+        <p>Cho em so sánh luôn cả Quản trị kinh doanh nữa, và không chỉ học phí mà cả số tín chỉ
+        tốt nghiệp với điều kiện xét học bổng của ba ngành đó với ạ.</p>
+      </div>
+      <div class="bubble bot wide">
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Tiêu chí</th><th>Công nghệ thông tin</th><th>Kế toán</th><th>Quản trị kinh doanh</th></tr></thead>
+            <tbody>
+              <tr><td>Học phí / tín chỉ</td><td><strong>520.000đ</strong> <span class="cite">[1]</span></td><td><strong>480.000đ</strong> <span class="cite">[2]</span></td><td><strong>495.000đ</strong> <span class="cite">[3]</span></td></tr>
+              <tr><td>TC tốt nghiệp</td><td><strong>150</strong> <span class="cite">[4]</span></td><td><strong>132</strong> <span class="cite">[5]</span></td><td><strong>130</strong> <span class="cite">[6]</span></td></tr>
+              <tr><td>GPA xét học bổng</td><td colspan="3">≥ <strong>3.20</strong> — áp dụng chung toàn trường <span class="cite">[7]</span></td></tr>
+              <tr><td>Tổng học phí ước tính</td><td>≈ 78,0 triệu</td><td>≈ 63,4 triệu</td><td>≈ 64,4 triệu</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Chênh lệch lớn nhất đến từ <strong>số tín chỉ tốt nghiệp</strong> chứ không phải đơn giá:
+        CNTT nhiều hơn Kế toán 18 tín chỉ, đủ bù lại cả phần đơn giá cao hơn <span class="cite">[1][4]</span>.</p>
+      </div>
+
+      <div class="turn-sep"><span>Lượt 3 · vế ẩn — phải giải tham chiếu trước khi phân rã</span></div>
+      <div class="bubble user"><p>Còn so với ngành em đang học thì sao?</p></div>
+      <div class="bubble bot">
+        <p>Bạn đang học <strong>Công nghệ thông tin</strong> — ngành này đã có trong bảng so sánh ở trên,
+        là cột đầu tiên. Ba tiêu chí bạn hỏi ở lượt trước đều đã được đối chiếu đủ.</p>
+        <p>Nếu bạn muốn so thêm tiêu chí khác (thời gian đào tạo chuẩn, số học phần bắt buộc,
+        điều kiện chuyển ngành), cho mình biết cụ thể nhé.</p>
+      </div>
+    </div>
+
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="subturn-head">Lượt 1 — phân rã tối thiểu</div>
+      <div class="node system" data-n="04">
+        <div class="node-name">IntentRoutingNode <span class="badge system">đích riêng</span></div>
+        <div class="node-desc"><code>academic_comparison → AcademicComparisonNode</code>. Đây là nhánh RAG <strong>duy nhất bỏ qua node 06</strong>: phân rã do node 07 tự làm, theo trục thực thể chứ không theo trục ý.</div>
+      </div>
+      <div class="node seal" data-n="07">
+        <div class="node-name">AcademicComparisonNode <span class="badge seal">academic_comparison.yaml</span></div>
+<pre>{
+  <span class="jkey">"entities"</span>: [<span class="jstr">"Công nghệ thông tin"</span>, <span class="jstr">"Kế toán"</span>],
+  <span class="jkey">"comparison_criteria"</span>: [<span class="jstr">"Định mức học phí theo tín chỉ"</span>],
+  <span class="jkey">"sub_queries"</span>: [ <span class="jstr">"...ngành CNTT 2024-2025"</span>, <span class="jstr">"...ngành Kế toán 2024-2025"</span> ],
+  <span class="jkey">"comparison_table_columns"</span>: [<span class="jstr">"Công nghệ thông tin"</span>, <span class="jstr">"Kế toán"</span>]
+}</pre>
+        <div class="node-desc">
+          <code>comparison_table_columns</code> sinh ngay tại đây thay vì để node 12 tự đoán —
+          đảm bảo cột khớp đúng thực thể người dùng nêu và <strong>đúng thứ tự họ nêu</strong>.
+        </div>
+      </div>
+
+      <div class="subturn-head">Lượt 2 — chi phí nhân lên 4,5 lần</div>
+      <div class="node seal" data-n="07">
+        <div class="node-name">AcademicComparisonNode <span class="badge seal">3 × 3 = 9 sub-query</span></div>
+<pre>entities            = [CNTT, Kế toán, QTKD]              (3)
+comparison_criteria = [học phí, TC tốt nghiệp, GPA HB]   (3)
+sub_queries         = 3 × 3                              (9)</pre>
+        <div class="node-desc">
+          Số truy vấn là <strong>tích</strong> chứ không phải tổng. Thêm một thực thể vào câu
+          hỏi 3 tiêu chí là thêm 3 lần retrieval; thêm một tiêu chí là thêm 3 lần nữa. Từ 2
+          truy vấn ở lượt 1 lên 9 chỉ bằng một câu nói.
+        </div>
+      </div>
+      <div class="node pending" data-n="10">
+        <div class="node-name">RetrievalFilteringNode <span class="badge pending">9 lần song song</span></div>
+        <div class="node-desc">
+          <code>asyncio.gather()</code> giữ độ trễ ở mức một lần retrieval, nhưng chi phí
+          embedding + rerank thì nhân đủ 9. Đây là chỗ cần trần <code>MAX_PARALLEL_SUBQUERIES</code>
+          và khử trùng lặp: tiêu chí "GPA xét học bổng" áp dụng chung toàn trường nên 3 truy vấn
+          của nó trả về <strong>cùng một chunk</strong> — đáng lẽ chỉ cần 1.
+        </div>
+      </div>
+      <div class="node resolved" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge resolved">gộp ô giống nhau</span></div>
+        <div class="node-desc">
+          Tiêu chí nào mọi thực thể đều cùng giá trị thì <strong>gộp ô</strong> (hàng "GPA xét
+          học bổng" trải cả 3 cột) thay vì lặp lại ba lần — cột nào cũng giống nhau là dấu hiệu
+          tiêu chí đó không phân biệt được gì, để nguyên chỉ làm bảng nhiễu.
+        </div>
+        <div class="node-desc">
+          Node cũng đưa <strong>nhận định trực tiếp</strong> ("chênh lệch lớn nhất đến từ số tín
+          chỉ, không phải đơn giá") theo rule SO SÁNH PHƯƠNG ÁN — cấm liệt kê xong rồi kết luận
+          chung chung kiểu "ngành nào phù hợp hơn thì chọn".
+        </div>
+      </div>
+
+      <div class="subturn-head">Lượt 3 — vế ẩn, phải giải tham chiếu</div>
+      <div class="node pending" data-n="07">
+        <div class="node-name">AcademicComparisonNode <span class="badge pending">2 tham chiếu cần giải</span></div>
+<pre><span class="jstr">"Còn so với ngành em đang học thì sao?"</span>
+
+"ngành em đang học" → organization_scopes = ["KHOA_CNTT","GLOBAL"]
+                    → tra bảng mã khoa → "Công nghệ thông tin"
+"so với ... thì sao" → comparison_criteria kế thừa từ lượt 2</pre>
+        <div class="node-desc">
+          Câu ngắn nhất trong hội thoại nhưng khó nhất: <strong>cả thực thể lẫn tiêu chí đều
+          ẩn</strong>. Thực thể giải từ <code>academic_security_context</code> (JWT), tiêu chí
+          giải từ lịch sử hội thoại. Node 07 vì vậy phải nhận cả hai thứ đó làm input, không
+          chỉ <code>user_query</code>.
+        </div>
+      </div>
+      <div class="node resolved" data-n="12">
+        <div class="node-name">GenerationSynthesisNode <span class="badge resolved">0 truy vấn mới</span></div>
+        <div class="node-desc">
+          Sau khi giải tham chiếu, CNTT <strong>đã có sẵn</strong> trong bảng lượt 2 → không cần
+          retrieval lần nào nữa. Node trả lời bằng kết quả cũ và mời làm rõ nếu muốn tiêu chí mới.
+        </div>
+        <div class="node-desc">
+          Nếu bỏ qua bước kiểm tra này, hệ thống sẽ chạy lại 3 truy vấn cho một ngành vốn đã
+          nằm trong câu trả lời trước đó — tốn tiền để in lại đúng con số vừa in.
+        </div>
+      </div>
+      <div class="node pending" data-n="⚠">
+        <div class="node-name">Ba lỗ hổng lộ ra qua hội thoại này</div>
+        <div class="node-desc">
+          <strong>1. Chưa chặn <code>len(entities) &lt; 2</code>.</strong> Nếu lượt 3 giải tham
+          chiếu thất bại, node vẫn route sang retrieval với 1 thực thể — fan-out mất nghĩa, bảng
+          so sánh một cột. Type A chưa cài chốt, đã ghi trong checklist của
+          <code>missing_metadata_clarification_design.md</code>.
+        </div>
+        <div class="node-desc">
+          <strong>2. Chưa có trần số sub-query.</strong> 4 ngành × 5 tiêu chí = 20 truy vấn song
+          song trong một câu hỏi hợp lệ.
+        </div>
+        <div class="node-desc">
+          <strong>3. Chưa khử trùng lặp tiêu chí toàn trường.</strong> Tiêu chí không phụ thuộc
+          ngành nên tách thành 1 truy vấn chung thay vì N.
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============ TIER 5 ============ -->
+  <section class="turn" id="flow-t5">
+    <div class="turn-head">
+      <span class="turn-num">5</span>
+      <div>
+        <div class="turn-title">Không đủ ngữ cảnh — ticket fallback</div>
+        <p class="turn-sub">Tier 5 · lưới an toàn cuối cùng chống hallucination. <span class="flow-file">flow_examples/07_chat_ticket_fallback.md</span></p>
+      </div>
+    </div>
+    <div class="chain">
+      <span class="pill sys">01–04</span><span class="arrow">→</span>
+      <span class="pill rag">06 HyDE</span><span class="arrow">→</span>
+      <span class="pill rag">10 Retrieval</span><span class="arrow">→</span>
+      <span class="pill rag">11 Rerank</span><span class="arrow">→</span>
+      <span class="pill alt">13 Ticket</span>
+      <span class="pill end skip">12</span>
+    </div>
+    <p class="frontstage-label">Sinh viên thấy</p>
+    <div class="chat">
+      <div class="bubble user"><p>Sinh viên nước ngoài diện học bổng Chính phủ có được miễn học phí không?</p></div>
+      <div class="bubble bot">
+        <p>Hiện mình chưa tìm thấy quy định cụ thể về trường hợp này trong kho văn bản học vụ chính thức của Nhà trường.</p>
+        <p>Để được giải đáp chính xác, bạn có thể tạo một Ticket hỗ trợ gửi trực tiếp đến Phòng Đào tạo.</p>
+        <div class="askform-foot" style="margin-top:.6rem;">
+          <span class="form-hint" id="hint-ticket">Bấm thử để xem action payload node 13 trả về.</span>
+          <button type="button" class="btn-submit" id="btn-ticket">🎫 Tạo Ticket Hỗ Trợ Học Vụ</button>
+        </div>
+      </div>
+    </div>
+    <p class="backstage-label">Hệ thống làm</p>
+    <div class="ledger">
+      <div class="node seal" data-n="11">
+        <div class="node-name">PostRetrievalRerankNode <span class="badge seal">mọi chunk trượt ngưỡng</span></div>
+<pre>CHK_HP_2024_001 → 0.52 ❌
+CHK_HP_2024_003 → 0.41 ❌
+... toàn bộ &lt; 0.70  →  valid_chunks = []</pre>
+<pre><span class="jkey">if</span> state.has_valid_context: <span class="jkey">return</span> GenerationSynthesisNode()
+<span class="jkey">else</span>:                        <span class="jkey">return</span> TicketFallbackNode()</pre>
+        <div class="node-desc">Câu hỏi hoàn toàn hợp lệ — chỉ là kho tài liệu chưa có quy định cho diện sinh viên này.</div>
+      </div>
+      <div class="node alt" data-n="13">
+        <div class="node-name">TicketFallbackNode <span class="badge pending">deterministic, 0 LLM</span></div>
+<pre id="ticket-payload">{
+  <span class="jkey">"response_type"</span>: <span class="jstr">"TICKET_FALLBACK"</span>,
+  <span class="jkey">"action_buttons"</span>: [{
+    <span class="jkey">"action_type"</span>: <span class="jstr">"CREATE_TICKET_MODAL"</span>,
+    <span class="jkey">"payload"</span>: {
+      <span class="jkey">"prefill_subject"</span>: <span class="jstr">"Chính sách học phí sinh viên nước ngoài
+                            diện học bổng Chính phủ"</span>,
+      <span class="jkey">"prefill_department"</span>: <span class="jstr">"PHONG_DAOTAO"</span>,
+      <span class="jkey">"original_query"</span>: <span class="jstr">"..."</span>
+    }
+  }]
+}</pre>
+        <div class="node-desc">Không gọi LLM ở nhánh này: nếu không có nguồn thì không có gì để diễn giải, và mọi câu chữ thêm vào đều là cơ hội để mô hình bịa.</div>
+      </div>
+      <div class="node pending" data-n="⚠">
+        <div class="node-name">Ngưỡng phải áp theo TỪNG sub-query</div>
+        <div class="node-desc">
+          Với Tier 4, quyết định này không được là toàn-hoặc-không. Câu hỏi 3 vế mà 2 vế
+          tra được thì phải trả lời 2 vế đó và chỉ mở ticket cho vế còn lại — đẩy cả ba
+          vào fallback là vứt bỏ công đã làm được.
         </div>
       </div>
     </div>
@@ -569,8 +1843,8 @@ pending_clarification = None
         <dd>Chỉ chạy khi task_1 chọn Cách 2. Đặt đúng 1 câu hỏi cuối cùng.</dd>
       </div>
       <div>
-        <dt>prompt_template/common/ask_user_choice_guide.yaml</dt>
-        <dd>Quy tắc sinh JSON <code>ask_user_choice</code> từ nhãn nhánh trong văn bản.</dd>
+        <dt>prompt_template/common/ask_user_form_guide.yaml</dt>
+        <dd>Hợp đồng JSON <code>ask_user_form</code> — mảng <code>fields</code>, <code>options: null</code> cho ô nhập tự do.</dd>
       </div>
       <div>
         <dt>prompt_template/common/academic_metadata.yaml</dt>
@@ -596,9 +1870,236 @@ pending_clarification = None
         <dt>missing_metadata_clarification_design.md</dt>
         <dd>Thiết kế đầy đủ Type A (checklist tĩnh) vs Type B (tự phát hiện).</dd>
       </div>
+      <div>
+        <dt>nodes/kltn_graph_overview.md</dt>
+        <dd>Nguồn chuẩn của bảng tier và <code>ROUTING_MAP</code> — chín luồng ở trên bám theo file này.</dd>
+      </div>
+      <div>
+        <dt>prompt_template/agents/academic_comparison.yaml</dt>
+        <dd>Phân rã thực thể × tiêu chí cho node 07 (Tier 4b).</dd>
+      </div>
+      <div>
+        <dt>flow_examples/</dt>
+        <dd>Bản gốc kèm system prompt từng node. Còn sót luồng đã gộp (<code>01</code>, <code>03</code>) và thiếu Tier 0 lẫn node 07.</dd>
+      </div>
     </dl>
   </footer>
 
 </div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Ngưỡng GPA khác nhau theo hệ — mô phỏng đúng việc lượt 2 retrieval ra bảng
+  // ngưỡng riêng của hệ/chương trình, không phải bảng tổng quát của lượt 1.
+  var GPA_THRESHOLD = {
+    chinh_quy_dai_tra: "3.20",
+    chinh_quy_clc:     "3.40",
+    lien_thong:        "3.00",
+    vlvh:              "3.00"
+  };
+  var LABEL = {
+    chinh_quy_dai_tra: "hệ chính quy đại trà",
+    chinh_quy_clc:     "hệ chính quy chất lượng cao",
+    lien_thong:        "hệ liên thông",
+    vlvh:              "hệ vừa làm vừa học",
+    cu_nhan:           "chương trình cử nhân",
+    ky_su:             "chương trình kỹ sư",
+    kien_truc_su:      "chương trình kiến trúc sư"
+  };
+
+  function readForm(form) {
+    var data = {};
+    new FormData(form).forEach(function (value, key) {
+      var v = String(value).trim();
+      if (v) { data[key] = v; }
+    });
+    return data;
+  }
+
+  /* ---------- Trường hợp 1: 1 field → chọn là xong, không cần nút Gửi ---------- */
+  var form1 = document.getElementById("form-case1");
+  if (form1) {
+    form1.addEventListener("submit", function (e) { e.preventDefault(); });
+    form1.addEventListener("change", function () {
+      var picked = readForm(form1).dien_mien_giam;
+      if (!picked) { return; }
+      var hint = document.getElementById("hint-case1");
+      hint.classList.remove("error");
+      hint.textContent = "resolve_form() → confirmed_metadata[\"dien_mien_giam\"] = \"" + picked + "\"";
+    });
+  }
+
+  /* ---------- Trường hợp 2: 4 field → cần nút Gửi ---------- */
+  var form2 = document.getElementById("form-case2");
+  if (!form2) { return; }
+
+  var FIELDS = ["he_dao_tao", "khoa_nhap_hoc", "chuong_trinh_dao_tao", "diem_ren_luyen"];
+
+  form2.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    var data = readForm(form2);
+    var missing = FIELDS.filter(function (f) { return !data[f]; });
+    var hint = document.getElementById("hint-case2");
+
+    // Điền thiếu KHÔNG bị chặn — đúng hành vi resolve_form(): giữ phần đã điền,
+    // chỉ hỏi lại phần còn trống ở lượt sau.
+    if (missing.length) {
+      hint.classList.add("error");
+      hint.textContent = "Còn trống: " + missing.join(", ") + " → lượt sau chỉ hỏi lại đúng " +
+                         missing.length + " ô này. Điền đủ để xem lượt 2 hoàn chỉnh.";
+      renderGuard(data, missing);
+      return;
+    }
+
+    hint.classList.remove("error");
+    hint.textContent = "Đã gửi — 4 field vào confirmed_metadata một lần.";
+
+    var btn = document.getElementById("submit-case2");
+    btn.disabled = true;
+    btn.textContent = "✓ Đã gửi";
+
+    renderGuard(data, missing);
+    renderTurn2(data);
+
+    document.getElementById("c2-user-echo").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
+  function renderGuard(data, missing) {
+    var resolvedCount = FIELDS.length - missing.length;
+    var lines = [
+      "form_submission = " + JSON.stringify(data, null, 0),
+      "resolve_form(...) → resolved = {" + resolvedCount + " field}, unresolved = " + JSON.stringify(missing),
+      "confirmed_metadata.update(resolved)"
+    ];
+    lines.push(missing.length
+      ? "retry_count += 1 ; _keep_only(pending, unresolved)"
+      : "pending_clarification = None");
+    lines.push("→ route về pending.origin_node");
+    document.getElementById("c2-guard-json").textContent = lines.join("\n");
+  }
+
+  function renderTurn2(data) {
+    var he = data.he_dao_tao;
+    var profile = [LABEL[he], data.khoa_nhap_hoc.toUpperCase(), LABEL[data.chuong_trinh_dao_tao]].join(", ");
+
+    document.getElementById("c2-user-echo").innerHTML =
+      "<p>" + escapeHtml(profile.charAt(0).toUpperCase() + profile.slice(1)) +
+      ", điểm rèn luyện " + escapeHtml(data.diem_ren_luyen) + ".</p>";
+
+    document.getElementById("c2-profile-text").textContent = profile;
+    document.getElementById("c2-gpa-req").textContent = GPA_THRESHOLD[he] || "3.20";
+    document.getElementById("c2-drl-val").textContent = data.diem_ren_luyen;
+    document.getElementById("c2-bot-answer").hidden = false;
+  }
+
+  /* ---- Tier 3: form 3 field ở lượt 2 → lượt 2b và lượt 3 đổi theo ---- */
+
+  // Trần tín chỉ theo hệ, và việc học phần cải thiện có tính vào trần hay không
+  // theo khóa — hai quy chế quy định ngược nhau, đó là lý do phải hỏi cả hai field.
+  var HE = {
+    chinh_quy_dai_tra: { ten: "hệ chính quy đại trà",        tran: 25 },
+    chinh_quy_clc:     { ten: "hệ chính quy chất lượng cao", tran: 28 },
+    lien_thong:        { ten: "hệ liên thông",               tran: 22 },
+    vlvh:              { ten: "hệ vừa làm vừa học",          tran: 18 }
+  };
+  var KHOA = {
+    k21: { qc: "Quy chế 2021", tinhTran: false, diemCu: "Giữ cả hai, lấy điểm cao nhất để tính GPA" },
+    k22: { qc: "Quy chế 2021", tinhTran: false, diemCu: "Giữ cả hai, lấy điểm cao nhất để tính GPA" },
+    k23: { qc: "Quy chế 2023", tinhTran: true,  diemCu: "Điểm mới thay thế hoàn toàn điểm cũ" },
+    k24: { qc: "Quy chế 2023", tinhTran: true,  diemCu: "Điểm mới thay thế hoàn toàn điểm cũ" },
+    k25: { qc: "Quy chế 2023", tinhTran: true,  diemCu: "Điểm mới thay thế hoàn toàn điểm cũ" }
+  };
+  var T3_FIELDS = ["khoa_nhap_hoc", "he_dao_tao", "so_tin_chi"];
+
+  var form3 = document.getElementById("form-t3");
+  if (form3) {
+    form3.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var d = readForm(form3);
+      var missing = T3_FIELDS.filter(function (f) { return !d[f]; });
+      var hint = document.getElementById("hint-t3");
+
+      document.getElementById("t3-guard").textContent =
+        "form_submission = " + JSON.stringify(d) + "\n" +
+        "resolve_form(...) → resolved = {" + (T3_FIELDS.length - missing.length) +
+        " field}, unresolved = " + JSON.stringify(missing) + "\n" +
+        "confirmed_metadata.update(resolved)\n" +
+        (missing.length
+          ? "retry_count += 1 ; _keep_only(pending, unresolved)"
+          : "pending_clarification = None") +
+        "\n→ route về pending.origin_node";
+
+      if (missing.length) {
+        hint.classList.add("error");
+        hint.textContent = "Còn trống: " + missing.join(", ") +
+          " → lượt sau chỉ hỏi lại đúng " + missing.length + " ô này. Điền đủ để xem lượt 2 và 3.";
+        return;
+      }
+
+      hint.classList.remove("error");
+      hint.textContent = "Đã gửi — 3 field vào confirmed_metadata một lần.";
+      var btn = document.getElementById("submit-t3");
+      btn.disabled = true;
+      btn.textContent = "✓ Đã gửi";
+
+      var he = HE[d.he_dao_tao], khoa = KHOA[d.khoa_nhap_hoc];
+      var daDK = parseInt(d.so_tin_chi, 10) || 0;
+
+      document.getElementById("t3-profile").textContent =
+        d.khoa_nhap_hoc.toUpperCase() + ", " + he.ten;
+      document.getElementById("t3-quyche").textContent = khoa.qc;
+      document.getElementById("t3-tinhtran").textContent = khoa.tinhTran ? "Có tính vào trần" : "KHÔNG tính vào trần";
+      document.getElementById("t3-tinhtran-2").textContent = khoa.tinhTran
+        ? "cải thiện ăn vào quota" : "cải thiện đăng ký thoải mái";
+      document.getElementById("t3-tran").textContent = he.tran + " TC";
+      document.getElementById("t3-dadk").textContent = "đã đăng ký " + daDK + " TC";
+      document.getElementById("t3-diemcu").textContent = khoa.diemCu;
+      document.getElementById("t3-answer2").hidden = false;
+
+      // Lượt 3: cộng 6 TC cải thiện — chỉ tính vào trần nếu áp quy chế 2023
+      var tong = khoa.tinhTran ? daDK + 6 : daDK;
+      var vuot = tong > he.tran;
+      document.getElementById("t3-answer3").innerHTML =
+        "<p>Với <strong>" + escapeHtml(d.khoa_nhap_hoc.toUpperCase()) + "</strong> — áp " +
+        escapeHtml(khoa.qc) + " — học phần cải thiện <strong>" +
+        (khoa.tinhTran ? "có" : "không") + "</strong> tính vào trần <span class=\"cite\">[2]</span>." +
+        (khoa.tinhTran
+          ? " Nên tổng sẽ là <strong>" + daDK + " + 6 = " + tong + " TC</strong>."
+          : " Nên 6 TC cải thiện <strong>nằm ngoài</strong> " + daDK + " TC bạn đã đăng ký.") +
+        "</p>" +
+        "<p>Trần của " + escapeHtml(he.ten) + " là <strong>" + he.tran + " TC</strong> <span class=\"cite\">[1]</span> → " +
+        (vuot
+          ? "<strong>vượt trần " + (tong - he.tran) + " TC</strong>. Bạn cần bớt môn, hoặc dời phần cải thiện sang học kỳ hè (trần riêng 8 TC)."
+          : "<strong>chưa vượt trần</strong>, còn dư " + (he.tran - tong) + " TC.") +
+        "</p>" +
+        "<p>Con số trên tính theo thông tin bạn tự cung cấp. Cổng đăng ký còn kiểm tra điều kiện tiên quyết của từng học phần và lớp còn chỗ hay không, nên bạn đối chiếu lại khi mở cổng nhé.</p>";
+    });
+  }
+
+  /* ---- Luồng 07: nút ticket → soi action payload node 13 trả về ---- */
+  var btnTicket = document.getElementById("btn-ticket");
+  if (btnTicket) {
+    btnTicket.addEventListener("click", function () {
+      btnTicket.disabled = true;
+      btnTicket.textContent = "✓ Đã mở modal tạo ticket";
+      document.getElementById("hint-ticket").textContent =
+        "UI đọc action_buttons[0].payload để prefill modal — xem node 13 bên dưới.";
+      var pre = document.getElementById("ticket-payload");
+      pre.scrollIntoView({ behavior: "smooth", block: "center" });
+      pre.style.outline = "2px solid var(--pending)";
+      pre.style.outlineOffset = "3px";
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+})();
+</script>
 </body>
 </html>

@@ -66,24 +66,32 @@ Dựa trên Quy chế Đào tạo và Định mức học phí của Nhà trư�
 
 ```python
 def collect_pending_clarification(raw_llm_response: str) -> PendingClarification | None:
-    # 1. Trích khối ```json cuối cùng trong response (theo ask_user_choice_guide.yaml:
+    # 1. Trích khối ```json cuối cùng trong response (theo ask_user_form_guide.yaml:
     #    "Chỉ MỘT block json duy nhất, đặt ở cuối câu trả lời")
     json_block = extract_trailing_json_block(raw_llm_response)
     if json_block is None:
         return None  # LLM trả lời trọn vẹn, không cần hỏi thêm → xoá pending_clarification cũ (nếu có)
 
     parsed = json.loads(json_block)
-    if parsed.get("type") != "ask_user_choice":
+    if parsed.get("type") != "ask_user_form":
         return None  # không phải JSON hỏi lại (VD lỡ có code block khác) → bỏ qua
+
+    fields = parsed["fields"]                      # LUÔN là mảng, kể cả khi chỉ 1 field
+    missing_fields = [f["field"] for f in fields]
+    options = [
+        [o["id"] for o in f["options"]] if f.get("options") else None
+        for f in fields
+    ]
 
     return PendingClarification(
         origin_node="QueryTransformationNode",  # luôn cố định — Type B luôn resume ở node 06, xem Mục 5 trong missing_metadata_clarification_design.md
         pending_sub_query_id=parsed.get("sub_query_id"),  # None nếu luồng SINGLE
-        missing_field=parsed["field"],
-        options=[o["id"] for o in parsed.get("options") or []] or None,
+        missing_fields=missing_fields,
+        options=options,
         retry_count=(
             state.pending_clarification.retry_count
-            if state.pending_clarification and state.pending_clarification.missing_field == parsed["field"]
+            if state.pending_clarification
+            and set(state.pending_clarification.missing_fields) & set(missing_fields)
             else 0
         ),
     )
@@ -92,9 +100,9 @@ state.pending_clarification = collect_pending_clarification(raw_llm_response)
 ```
 
 **4 điểm quan trọng**:
-- `origin_node` **không phải LLM quyết định** — orchestrator gán cứng `"QueryTransformationNode"` mỗi khi parser bắt được `ask_user_choice` từ node 12, vì Type B luôn resume ở node 06 (retrieval lại với thuộc tính mới), không bao giờ resume thẳng ở node 12.
-- `retry_count` **giữ nguyên** nếu field hỏi lại trùng với field đã hỏi lượt trước (cùng câu hỏi chưa được giải quyết) — việc **tăng** `retry_count` xảy ra ở bước routing của node 02 (Clarification Guard, [`nodes/02_security_context_extraction_node.md`](02_security_context_extraction_node.md)) khi quyết định route trở lại `origin_node`, không phải ở đây.
-- Nếu response KHÔNG có khối `ask_user_choice` (LLM trả lời trọn vẹn — trường hợp bình thường, hoặc trường hợp hết `MAX_CLARIFICATION_RETRY` buộc phải trả lời an toàn theo rule "SO SÁNH PHƯƠNG ÁN"), `pending_clarification` được xoá về `None` — kết thúc vòng hỏi lại.
+- `origin_node` **không phải LLM quyết định** — orchestrator gán cứng `"QueryTransformationNode"` mỗi khi parser bắt được `ask_user_form` từ node 12, vì Type B luôn resume ở node 06 (retrieval lại với thuộc tính mới), không bao giờ resume thẳng ở node 12.
+- `retry_count` **giữ nguyên** nếu bộ field hỏi lại **giao** với bộ đã hỏi lượt trước (dùng giao thay vì bằng nhau, vì lượt sau thường chỉ hỏi lại phần người dùng bỏ trống — bộ nhỏ hơn nhưng vẫn là cùng một lần hỏi chưa xong). Việc **tăng** `retry_count` xảy ra ở bước routing của node 02 (Clarification Guard, [`nodes/02_security_context_extraction_node.md`](02_security_context_extraction_node.md)), không phải ở đây.
+- Nếu response KHÔNG có khối `ask_user_form` (LLM trả lời trọn vẹn — trường hợp bình thường, hoặc trường hợp hết `MAX_CLARIFICATION_RETRY` buộc phải trả lời an toàn theo rule "SO SÁNH PHƯƠNG ÁN"), `pending_clarification` được xoá về `None` — kết thúc vòng hỏi lại.
 - Node này **không bao giờ ghi** `state.confirmed_metadata`. Nó chỉ biết field nào còn thiếu, không biết câu trả lời — câu trả lời đến ở lượt sau. Single-writer của `confirmed_metadata` là Clarification Guard ở node 02; ghi rời rạc từ nhiều nơi sẽ khiến giá trị bị đè bằng `None` khi một node skip hoặc fail.
 
 ### Vì sao `PendingClarification` không có `field_definition`

@@ -32,7 +32,7 @@ Dự án `lisa-ai-agent` đã có sẵn cơ chế tương đương cho miền vi
 | Field cần hỏi biết trước được không? | ✅ Có — cố định theo cấu trúc output của node (VD: Calculation luôn cần `calculation_type`; Comparison luôn cần ≥2 `entities`) | ❌ Không — phụ thuộc chủ đề quy chế mà câu hỏi chạm tới, chỉ lộ ra SAU khi đọc văn bản trả về |
 | Thời điểm phát hiện | TRƯỚC khi truy vấn — ngay khi node parse xong `user_query` (chưa cần RAG) | SAU khi RAG trả `<academic_context>` — chỉ LLM tổng hợp câu trả lời (node 12) mới thấy được văn bản chia nhánh theo thuộc tính gì |
 | Cơ chế | `missing_params` do chính node đó tính ra, giống hệt mô hình lisa (registry cố định, ví dụ đã có sẵn ở `calculation_extractor.yaml`) | Rule mới trong `task_1.yaml` ("PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN") — LLM tại node 12 tự đặt tên field + tự trích option từ nhãn nhánh trong chính văn bản, KHÔNG tra registry nào |
-| File prompt liên quan | `agents/calculation_extractor.yaml`, `agents/academic_comparison.yaml` (đã có output schema) | `common/task_1.yaml` (rule phát hiện) + `common/task_2.yaml` + `common/ask_user_choice_guide.yaml` (file thật, đã tạo — xem Mục 6-7) |
+| File prompt liên quan | `agents/calculation_extractor.yaml`, `agents/academic_comparison.yaml` (đã có output schema) | `common/task_1.yaml` (rule phát hiện) + `common/task_2.yaml` + `common/ask_user_form_guide.yaml` (file thật, đã tạo — xem Mục 6-7) |
 
 Vì Type B không thể liệt kê trước, Mục 3 dưới đây **không phải một checklist bắt buộc kiểm tra hết** cho Advisory/Procedure/Document/Calendar — chỉ là các VÍ DỤ minh hoạ loại thuộc tính hay gặp, để chứng minh vấn đề tồn tại, không phải danh sách field cần code cứng vào node 06.
 
@@ -63,7 +63,7 @@ Khác với `lisa-ai-agent` (người dùng visa chưa có tài khoản → **m�
 | 08 | `CalculationNode` | A (tĩnh) | `program` | Profile → fallback Query | Sai đơn giá tín chỉ nếu suy nhầm ngành | ⚠️ Có schema (`parameters.program`) nhưng chưa ghi rõ có default từ profile hay không |
 | 07 | `AcademicComparisonNode` | A (tĩnh) | `entities[]` (bắt buộc ≥ 2) | Query, vế đầu có thể default = `program` suy ra từ `organization_scopes` | Chỉ so sánh được 1 vế → sub-query fan-out vô nghĩa | ❌ Không có — route thẳng `RetrievalFilteringNode()` dù `len(entities) < 2` |
 | 07 | `AcademicComparisonNode` | A (tĩnh) | `comparison_criteria[]` | Query | Không rõ so sánh theo tiêu chí gì (học phí/tín chỉ/GPA) → sub-query mơ hồ | ❌ Không có |
-| 06 | `QueryTransformationNode` (mọi mode — advisory/procedure/document/calendar) | **B (động, VÍ DỤ minh hoạ, không phải danh sách đầy đủ)** | VD: hệ đào tạo (GDQP), khóa nhập học (quy chế cũ/mới), ngành (học phí), loại giấy tờ cụ thể (document)... — chủ đề nào phát sinh thuộc tính nào chỉ biết được sau khi đọc `<academic_context>` | Văn bản trả về (chỉ lộ ra sau RAG) | Trả lời theo nhầm nhánh, hoặc liệt kê lan man tất cả nhánh | ✅ Có — rule "PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN" trong `common/task_1.yaml` + `common/task_2.yaml` + `common/ask_user_choice_guide.yaml` (file thật, xem Mục 6-7) |
+| 06 | `QueryTransformationNode` (mọi mode — advisory/procedure/document/calendar) | **B (động, VÍ DỤ minh hoạ, không phải danh sách đầy đủ)** | VD: hệ đào tạo (GDQP), khóa nhập học (quy chế cũ/mới), ngành (học phí), loại giấy tờ cụ thể (document)... — chủ đề nào phát sinh thuộc tính nào chỉ biết được sau khi đọc `<academic_context>` | Văn bản trả về (chỉ lộ ra sau RAG) | Trả lời theo nhầm nhánh, hoặc liệt kê lan man tất cả nhánh | ✅ Có — rule "PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN" trong `common/task_1.yaml` + `common/task_2.yaml` + `common/ask_user_form_guide.yaml` (file thật, xem Mục 6-7) |
 
 > Field của node 02 (`user_id`, `role`, `organization_scopes`, `max_access_level`) không nằm trong bảng vì luôn có sẵn 100% từ JWT decode — không thuộc diện "có thể thiếu".
 >
@@ -98,10 +98,10 @@ Hiện `pending_clarification` (node 02) đã có cấu trúc generic (`origin_n
 
 ```python
 class PendingClarification(BaseModel):
-    origin_node: str                  # Điểm QUAY LẠI khi user trả lời — KHÔNG luôn trùng điểm PHÁT HIỆN thiếu field (xem lưu ý Type B bên dưới)
-    pending_sub_query_id: str | None  # Luồng MULTI: sub-query nào còn treo; None nếu SINGLE
-    missing_field: str                # field_id bắt buộc còn thiếu — Type A: tên cố định (VD: "calculation_type"); Type B: tên do LLM tự đặt tại chỗ (VD: "training_type")
-    options: list[str] | None         # nếu field có tập giá trị hữu hạn (enum) → render ask_user_choice — Type A: từ schema; Type B: copy nguyên văn nhãn nhánh trong văn bản
+    origin_node: str                     # Điểm QUAY LẠI khi user trả lời — KHÔNG luôn trùng điểm PHÁT HIỆN thiếu field (xem lưu ý Type B bên dưới)
+    pending_sub_query_id: str | None     # Luồng MULTI: sub-query nào còn treo; None nếu SINGLE
+    missing_fields: list[str]            # 1 hoặc NHIỀU field hỏi cùng lúc — Type A: tên cố định; Type B: LLM tự đặt tại chỗ
+    options: list[list[str] | None]      # SONG SONG với missing_fields; None = ô nhập tự do (điểm số, số tín chỉ)
     retry_count: int = 0
 
 MAX_CLARIFICATION_RETRY = 2     # số lần hỏi lại tối đa cho CÙNG một field
@@ -122,6 +122,20 @@ Không có state này thì sinh viên chốt hệ đào tạo ở lượt 2, đ�
 **Single-writer: Clarification Guard ở node 02.** Chỉ guard mới có đồng thời `pending.options` và câu trả lời của sinh viên. Node 12 phát hiện field thiếu và **hỏi**, nhưng không bao giờ tự ghi giá trị — câu trả lời đến ở lượt sau. Việc map câu trả lời → `option.id` là deterministic (khớp chính xác id khi bấm chip UI, khớp không dấu khi gõ tay), không cần thêm một lần gọi LLM.
 
 **Ranh giới bảo mật**: `confirmed_metadata` là lời tự khai chưa xác minh. Nó chỉ dùng để **chọn nhánh trả lời**, tuyệt đối không được đưa vào Qdrant payload filter ở node 10 — nếu lẫn, sinh viên chỉ cần khai "em là học viên cao học" là đọc được tài liệu ngoài quyền. Trong prompt, hai nguồn được render thành hai thẻ XML tên khác hẳn nhau (`<academic_user_context>` vs `<student_declared_attributes>`) để LLM không nhầm.
+
+### Vì sao `missing_fields` là mảng: ca khách vãng lai
+
+`AcademicSecurityContext` cho phép `role = "KHACH"` (không có JWT) — cổng tra cứu mở cho thí sinh và phụ huynh. Khi đó `organization_scopes = ["GLOBAL"]`, `max_access_level = 1`, và **hồ sơ trống hoàn toàn**.
+
+Hệ quả: một câu hỏi tưởng đơn giản như *"sinh viên năm nhất GPA 3.6 thì có được học bổng không?"* đụng ngay 4 thuộc tính chưa biết cùng lúc — hệ đào tạo, khóa nhập học, chương trình đào tạo, điểm rèn luyện. Không thuộc tính nào suy ra được từ các thuộc tính còn lại.
+
+Hỏi lẻ từng cái qua 4 lượt thì phần lớn người dùng bỏ giữa chừng. Vì vậy `ask_user_form` (một field) đã được thay bằng **`ask_user_form`** (mảng `fields`), và `PendingClarification` mang hai mảng song song với bất biến `len(options) == len(missing_fields)`.
+
+**Điền một phần vẫn được giữ**: `resolve_form()` trả về `(resolved, unresolved)`; phần đã điền vào thẳng `confirmed_metadata`, phần trống được `_keep_only()` thu lại thành form nhỏ hơn cho lượt sau. Vứt cả form vì thiếu một ô là cách nhanh nhất để mất người dùng.
+
+**Chỉ gom field ĐỘC LẬP vào một form.** Field lồng nhau (tập `options` của B phụ thuộc giá trị của A, VD `loai_hinh_clc` chỉ tồn tại khi `he_dao_tao = chinh_quy_clc`) phải tách sang lượt sau — hỏi cùng lúc là bắt người dùng trả lời một câu có thể vô nghĩa với họ.
+
+**Khách vãng lai không được nới quyền.** Lời khai của `KHACH` đi vào `confirmed_metadata` để chọn nhánh trả lời, không đi vào payload filter — khai "em là sinh viên K22 khoa CNTT" vẫn chỉ đọc được tài liệu `GLOBAL` cấp 1.
 
 **Không lưu hàng đợi field chưa hỏi.** Type B phát hiện lại từ đầu mỗi lượt: sau khi sinh viên chốt field thứ nhất, node 06 sinh query mới → node 10 retrieval lại → `<academic_context>` là tập văn bản **khác**, và thuộc tính thứ hai định lưu sẵn có thể đã không còn liên quan. Một mảng `missing_fields[]` ở đây là cache của suy luận hết hiệu lực, không chỉ thừa mà sai. Vòng lặp tự sửa: hỏi 1 → chốt → retrieval mới → phát hiện lại nếu vẫn còn thiếu.
 
@@ -145,9 +159,9 @@ Routing guard ở node 02 (mục 5, [nodes/02_security_context_extraction_node.m
 | :--- | :--- | :--- |
 | [`prompt_template/common/task_1.yaml`](prompt_template/common/task_1.yaml) | Thêm rule **"PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN"** — đây là bước Type B mới, lisa-ai-agent không có tương đương vì miền visa không cần "tự phát hiện" field, field luôn có sẵn trong registry | Chỉ KLTN mới cần, vì RAG mở trên nhiều chủ đề quy chế khác nhau |
 | [`prompt_template/common/task_2.yaml`](prompt_template/common/task_2.yaml) | Đặt đúng 1 câu hỏi cuối cùng — nhận field từ 1 trong 2 nguồn: `<missing_metadata_to_confirm>` (Type A, node trước truyền vào) HOẶC tự phát hiện ở NHIỆM VỤ 1 (Type B) | Thêm hẳn 1 đoạn phân biệt 2 nguồn field ngay đầu file — bản gốc lisa chỉ có 1 nguồn (registry) |
-| [`prompt_template/common/ask_user_choice_guide.yaml`](prompt_template/common/ask_user_choice_guide.yaml) | Quy tắc sinh JSON `ask_user_choice` | Với Type B, `options.id` phải copy nguyên văn nhãn nhánh **trong chính văn bản vừa đọc**, không phải từ registry — có ví dụ minh hoạ riêng cho case này |
+| [`prompt_template/common/ask_user_form_guide.yaml`](prompt_template/common/ask_user_form_guide.yaml) | Quy tắc sinh JSON `ask_user_form` | Với Type B, `options.id` phải copy nguyên văn nhãn nhánh **trong chính văn bản vừa đọc**, không phải từ registry — có ví dụ minh hoạ riêng cho case này |
 
-Cả 2 file `task_2` và `ask_user_choice_guide` đã được wire vào `{task_2}` trong [`main/chat_academic_advisory.yaml`](prompt_template/main/chat_academic_advisory.yaml) và [`main/chat_multi_intent_synthesis.yaml`](prompt_template/main/chat_multi_intent_synthesis.yaml) — 2 template RAG duy nhất có khả năng gặp Type B (Calculation/Comparison dùng `AskUserClarificationNode` riêng cho Type A, không qua 2 file này).
+Cả 2 file `task_2` và `ask_user_form_guide` đã được wire vào `{task_2}` trong [`main/chat_academic_advisory.yaml`](prompt_template/main/chat_academic_advisory.yaml) và [`main/chat_multi_intent_synthesis.yaml`](prompt_template/main/chat_multi_intent_synthesis.yaml) — 2 template RAG duy nhất có khả năng gặp Type B (Calculation/Comparison dùng `AskUserClarificationNode` riêng cho Type A, không qua 2 file này).
 
 ---
 
@@ -191,10 +205,12 @@ tuỳ theo hệ đào tạo sinh viên đang theo học [1].
 Bạn đang học theo hệ đào tạo nào ạ?
 
 ```json
-{"type": "ask_user_choice", "field": "training_type", "options": [
-  {"id": "chinh_quy", "label": "Chính quy"},
-  {"id": "lien_thong", "label": "Liên thông"},
-  {"id": "vlvh", "label": "Vừa làm vừa học"}
+{"type": "ask_user_form", "fields": [
+  {"field": "training_type", "label": "Hệ đào tạo", "options": [
+    {"id": "chinh_quy", "label": "Chính quy"},
+    {"id": "lien_thong", "label": "Liên thông"},
+    {"id": "vlvh", "label": "Vừa làm vừa học"}
+  ]}
 ]}
 ```
 ```
@@ -205,8 +221,9 @@ State cập nhật `pending_clarification` với `origin_node = "QueryTransforma
 {
   "pending_clarification": {
     "origin_node": "QueryTransformationNode",
-    "missing_field": "training_type",
-    "options": ["chinh_quy", "lien_thong", "vlvh"],
+    "pending_sub_query_id": null,
+    "missing_fields": ["training_type"],
+    "options": [["chinh_quy", "lien_thong", "vlvh"]],
     "retry_count": 0
   }
 }
@@ -254,14 +271,14 @@ pending_clarification = None  # node 02 dọn state, tránh kẹt vòng lặp
 
 ## 9. Việc Còn Lại Nếu Triển Khai
 
-- [x] Tạo 2 file prompt thật `prompt_template/common/task_2.yaml` + `ask_user_choice_guide.yaml`, wire `{task_2}` vào `main/chat_academic_advisory.yaml` + `main/chat_multi_intent_synthesis.yaml`.
+- [x] Tạo 2 file prompt thật `prompt_template/common/task_2.yaml` + `ask_user_form_guide.yaml`, wire `{task_2}` vào `main/chat_academic_advisory.yaml` + `main/chat_multi_intent_synthesis.yaml`.
 - [x] Thêm rule "PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN" (Type B) vào `prompt_template/common/task_1.yaml`.
 - [ ] Thêm bảng field bắt buộc Type A (Mục 3) vào `nodes/07`, `nodes/08` như một mục `## Missing Metadata Handling` riêng (Type B của node 06 KHÔNG cần bảng field — bản chất là "không có bảng", đã giải thích ở Mục 1.5).
 - [x] Bỏ câu "chỉ dành cho CalculationNode" ở [`nodes/02_security_context_extraction_node.md`](nodes/02_security_context_extraction_node.md), đổi thành mô tả generic theo Mục 5 (bao gồm cả lưu ý "điểm phát hiện ≠ điểm quay lại" cho Type B).
 - [x] Thêm `confirmed_metadata` vào State; guard node 02 làm single-writer; render thành `<student_declared_attributes>` trong [`common/academic_metadata.yaml`](prompt_template/common/academic_metadata.yaml).
 - [x] Bỏ `field_definition` khỏi `PendingClarification` và placeholder `{missing_field_definition}` khỏi [`common/task_2.yaml`](prompt_template/common/task_2.yaml).
 - [x] Cấm dùng thuộc tính tự khai cho phân quyền — [`common/security_access_control.yaml`](prompt_template/common/security_access_control.yaml) mục 2.
-- [x] Thêm `pending_sub_query_id` để luồng MULTI resume đúng sub-query còn treo, không chạy lại các ý đã trả lời xong (LLM phát ra qua khoá `sub_query_id` trong `ask_user_choice`).
+- [x] Thêm `pending_sub_query_id` để luồng MULTI resume đúng sub-query còn treo, không chạy lại các ý đã trả lời xong (LLM phát ra qua khoá `sub_query_id` trong `ask_user_form`).
 - [x] Bổ sung tiêu chí phân định **CÁCH 1 (trả lời phân nhánh bằng bảng)** vs **CÁCH 2 (hỏi lại)** vào `task_1.yaml`, kèm bố cục bảng ở `response_style.yaml` mục 4. CÁCH 1 là mặc định khi 2-4 nhánh cùng bộ tiêu chí và thuộc tính là thứ sinh viên tự biết — hỏi lại lúc đó chỉ tốn một lượt mà không thu được thông tin gì mới.
 - [ ] Kiểm tra node 10 (`RetrievalFilteringNode`) **không** đọc `confirmed_metadata` khi build Qdrant payload filter — hiện chưa có ràng buộc nào chặn ở tầng code.
 - [ ] Cập nhật ví dụ GDQP ở Mục 8: 3 nhánh cùng tiêu chí "được miễn hay không" nên theo rule mới nó thuộc **CÁCH 1** (bảng), không còn minh hoạ đúng đường hỏi lại — nên đổi sang một case không dựng được bảng, như ví dụ miễn giảm học phí trong [`overview_flow.html`](overview_flow.html).
