@@ -1,0 +1,717 @@
+<title>Hồ Sơ Miễn Giảm Học Phí</title>
+
+<style>
+  :root {
+    --ground:    #EFEAE0;
+    --surface:   #FAF8F2;
+    --surface-2: #E6DFCE;
+    --ink:       #211C14;
+    --ink-soft:  #5C5341;
+    --ink-faint: #8C816A;
+    --rule:      #D6CCB0;
+    --rule-soft: #E2DAC4;
+
+    --verified:    #0E6B54;
+    --verified-bg: #DCEBE3;
+    --declared:    #A8501A;
+    --declared-bg: #F2E1D0;
+    --stamp:       #2E3B73;
+    --stamp-bg:    #DEE1F0;
+    --alert:       #96271F;
+
+    --code-bg:  #E9E2CC;
+    --code-ink: #241F16;
+
+    --shadow: 0 1px 0 rgba(33,28,20,.05), 0 10px 26px -20px rgba(33,28,20,.55);
+
+    --serif: Cambria, Constantia, "Noto Serif", Georgia, "Times New Roman", serif;
+    --sans:  "Segoe UI", Roboto, "Helvetica Neue", system-ui, -apple-system, sans-serif;
+    --mono:  "Cascadia Mono", Consolas, "SF Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #15130F;
+      --surface:   #1C1916;
+      --surface-2: #24201A;
+      --ink:       #ECE5D6;
+      --ink-soft:  #B3A891;
+      --ink-faint: #756B58;
+      --rule:      #362F24;
+      --rule-soft: #2A251C;
+
+      --verified:    #4CC79E;
+      --verified-bg: #0F2E25;
+      --declared:    #E39257;
+      --declared-bg: #33230F;
+      --stamp:       #8C93D6;
+      --stamp-bg:    #232A4C;
+      --alert:       #E7857A;
+
+      --code-bg:  #100E0A;
+      --code-ink: #D9D1BC;
+
+      --shadow: 0 1px 0 rgba(0,0,0,.35), 0 12px 30px -20px #000;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:    #15130F;
+    --surface:   #1C1916;
+    --surface-2: #24201A;
+    --ink:       #ECE5D6;
+    --ink-soft:  #B3A891;
+    --ink-faint: #756B58;
+    --rule:      #362F24;
+    --rule-soft: #2A251C;
+
+    --verified:    #4CC79E;
+    --verified-bg: #0F2E25;
+    --declared:    #E39257;
+    --declared-bg: #33230F;
+    --stamp:       #8C93D6;
+    --stamp-bg:    #232A4C;
+    --alert:       #E7857A;
+
+    --code-bg:  #100E0A;
+    --code-ink: #D9D1BC;
+
+    --shadow: 0 1px 0 rgba(0,0,0,.35), 0 12px 30px -20px #000;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16.5px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 100px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  /* ── Sticky index ─────────────────────────────────────────────── */
+  .index {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 0;
+    margin: 0 0 8px;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .index a {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .04em;
+    text-decoration: none;
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 5px 10px;
+    background: var(--surface);
+    white-space: nowrap;
+  }
+  .index a:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  /* ── Masthead ─────────────────────────────────────────────────── */
+  .masthead {
+    display: grid;
+    gap: 16px;
+    padding: 44px 0 34px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: clamp(32px, 4.6vw, 50px);
+    line-height: 1.08;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: 0;
+    max-width: 20ch;
+  }
+  .standfirst { font-size: 18px; color: var(--ink-soft); max-width: 66ch; margin: 0; }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 22px; padding-top: 4px; font-size: 13.5px; color: var(--ink-soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+  .sw-v { background: var(--verified); }
+  .sw-d { background: var(--declared); }
+  .sw-s { background: var(--stamp); }
+
+  /* ── Part headers ─────────────────────────────────────────────── */
+  .part {
+    margin-top: 62px;
+    padding-top: 26px;
+    border-top: 1px solid var(--rule);
+  }
+  .part-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+  .part-num {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--stamp);
+    background: var(--stamp-bg);
+    border-radius: 3px;
+    padding: 3px 9px;
+    letter-spacing: .04em;
+  }
+  h2 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: clamp(22px, 2.6vw, 28px);
+    letter-spacing: -.005em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .part-thesis { font-size: 16px; color: var(--ink-soft); max-width: 68ch; margin: 0 0 28px; }
+  h3 {
+    font-family: var(--sans);
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    margin: 28px 0 10px;
+    color: var(--ink);
+  }
+  p { margin: 0 0 12px; max-width: 70ch; }
+  p:last-child { margin-bottom: 0; }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+
+  /* ── Tables ───────────────────────────────────────────────────── */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; margin: 14px 0 18px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; background: var(--surface); }
+  th, td { text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; border-bottom: 1px solid var(--rule); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.dim { color: var(--ink-faint); }
+  tbody tr.dim td:first-child { color: var(--ink-faint); }
+  td:first-child { font-family: var(--mono); font-weight: 700; color: var(--stamp); white-space: nowrap; }
+  tbody tr.hit { background: color-mix(in srgb, var(--verified-bg) 55%, var(--surface)); }
+  tbody tr.hit td:first-child { color: var(--verified); }
+
+  /* ── Node step cards ──────────────────────────────────────────── */
+  .steps { display: grid; gap: 0; margin: 18px 0 8px; }
+  .step { display: grid; grid-template-columns: 60px minmax(0,1fr); gap: 0 20px; position: relative; padding: 0 0 30px; }
+  .step::before { content:""; position:absolute; left:19px; top:0; bottom:0; width:2px; background:var(--rule); }
+  .step:first-child::before { top: 36px; }
+  .step:last-child::before { bottom: auto; height: 36px; }
+  .marker {
+    position: relative; z-index: 1;
+    width: 40px; height: 40px; margin-top: 2px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--surface);
+    border: 2px solid var(--stamp);
+    color: var(--stamp);
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+  }
+  .step.miss .marker { border-color: var(--declared); color: var(--declared); }
+  .step-body { display: grid; gap: 10px; min-width: 0; }
+  .step-name { font-family: var(--sans); font-weight: 700; font-size: 15.5px; margin: 0; }
+  .step-name code { font-family: var(--mono); font-weight: 600; font-size: .82em; background: var(--code-bg); color: var(--code-ink); padding: .08em .3em; border-radius: 3px; }
+  .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 640px) { .io-grid { grid-template-columns: 1fr; } }
+  .io-box { border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; background: var(--surface); }
+  .io-box .io-label { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 6px; }
+  .io-box pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: var(--mono); font-size: 12.4px; line-height: 1.55; color: var(--code-ink); }
+  .step-note { font-size: 14.5px; color: var(--ink-soft); max-width: 68ch; }
+
+  /* ── Code blocks ──────────────────────────────────────────────── */
+  code { font-family: var(--mono); font-size: .87em; background: var(--code-bg); color: var(--code-ink); padding: .1em .35em; border-radius: 3px; word-break: break-word; }
+  pre.block {
+    margin: 10px 0 16px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  pre.block code { background: none; padding: 0; font-size: 12.8px; line-height: 1.6; color: var(--code-ink); white-space: pre; }
+  pre.block.verified { border-left-color: var(--verified); }
+  pre.block.declared { border-left-color: var(--declared); }
+  pre.block.stamp    { border-left-color: var(--stamp); }
+  .cap { font-size: 13px; color: var(--ink-faint); max-width: 68ch; margin: -8px 0 16px; }
+
+  /* ── Notes ────────────────────────────────────────────────────── */
+  .note { border: 1px solid var(--rule); border-left: 3px solid var(--ink-faint); border-radius: 4px; background: var(--surface-2); padding: 13px 16px; display: grid; gap: 6px; max-width: 74ch; margin: 14px 0; }
+  .note p { max-width: none; color: var(--ink-soft); font-size: 14.6px; }
+  .note-title { font-family: var(--mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink); margin: 0; }
+  .note.declared { border-left-color: var(--declared); background: var(--declared-bg); }
+  .note.declared .note-title { color: var(--declared); }
+  .note.verified { border-left-color: var(--verified); background: var(--verified-bg); }
+  .note.verified .note-title { color: var(--verified); }
+  .note.stamp { border-left-color: var(--stamp); background: var(--stamp-bg); }
+  .note.stamp .note-title { color: var(--stamp); }
+
+  /* ── Response mock ────────────────────────────────────────────── */
+  .response {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+    margin: 14px 0 18px;
+    font-size: 15px;
+  }
+  .response .rtag { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; }
+  .response .q { font-weight: 600; margin: 12px 0 10px; }
+  .cite { font-size: 13px; color: var(--verified); }
+
+  /* ── Ticket divider between turns ────────────────────────────── */
+  .ticket {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 14px;
+    margin: 54px 0 -6px;
+  }
+  .ticket::before, .ticket::after { content:""; height: 1px; background: repeating-linear-gradient(90deg, var(--ink-faint) 0 6px, transparent 6px 12px); }
+  .ticket-label {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--declared);
+    background: var(--declared-bg);
+    border: 1px dashed var(--declared);
+    border-radius: 4px;
+    padding: 6px 14px;
+    white-space: nowrap;
+  }
+
+  ul { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; max-width: 70ch; }
+  li::marker { color: var(--ink-faint); }
+
+  /* ── Closer ───────────────────────────────────────────────────── */
+  .closer { margin-top: 64px; padding-top: 30px; border-top: 2px solid var(--ink); display: grid; gap: 18px; }
+  .colophon { font-size: 13px; color: var(--ink-faint); max-width: 72ch; }
+
+  a { color: var(--verified); text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--declared); outline-offset: 3px; }
+</style>
+
+<div class="wrap">
+
+  <nav class="index">
+    <a href="#pipeline">I. Pipeline</a>
+    <a href="#assembly">II. Nạp Template</a>
+    <a href="#turn1">III. Lượt 1</a>
+    <a href="#boundary">Cầu Nối</a>
+    <a href="#turn2">IV. Lượt 2</a>
+  </nav>
+
+  <header class="masthead">
+    <p class="kicker">KLTN · RAG Graph · Dossier kỹ thuật một truy vấn</p>
+    <h1>Hồ Sơ Miễn Giảm Học Phí</h1>
+    <p class="standfirst">
+      Một câu hỏi thật, đi qua đủ 8 node của pipeline, hai lượt hội thoại. Lượt 1 phát hiện
+      thiếu <strong>hai</strong> thuộc tính độc lập. Lượt 2 người dùng chỉ trả lời được một —
+      hồ sơ này lần theo đúng điểm state rẽ nhánh, nội dung template thật, và cách field còn
+      treo được nạp ngược vào <code>&lt;missing_metadata_to_confirm&gt;</code> cho vòng hỏi tiếp theo.
+    </p>
+    <div class="legend">
+      <span><i class="swatch sw-v"></i> JWT — đã xác minh</span>
+      <span><i class="swatch sw-d"></i> Tự khai — chưa xác minh</span>
+      <span><i class="swatch sw-s"></i> Quyết định định tuyến / cấu trúc</span>
+    </div>
+  </header>
+
+  <!-- ============================================================ PART I -->
+  <section class="part" id="pipeline">
+    <div class="part-head"><span class="part-num">PHẦN I</span><h2>Toàn Cảnh Pipeline</h2></div>
+    <p class="part-thesis">
+      13 node, nhưng câu hỏi trong hồ sơ này chỉ chạm 8 (tô đậm). Bảng dưới là input/output
+      chính của từng node — dòng mờ là các node KHÔNG nằm trên đường đi (Type A: Calculation,
+      Comparison), để thấy pipeline vẫn còn nguyên chứ không phải bị cắt bớt cho ví dụ.
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Node</th><th>Input chính</th><th>Output chính</th></tr></thead>
+        <tbody>
+          <tr class="hit"><td>01</td><td>GreetingDetectionNode</td><td><code>user_query</code>, <code>history_len</code></td><td>Regex — không khớp câu chào → đi tiếp</td></tr>
+          <tr class="hit"><td>02</td><td>SecurityContextExtractionNode</td><td><code>jwt_token</code> (không có → khách vãng lai)</td><td><code>academic_security_context</code></td></tr>
+          <tr class="hit"><td>03</td><td>MessageClassificationNode</td><td><code>user_query</code>, <code>conversation_history</code></td><td><code>intent_classification</code> (9 loại)</td></tr>
+          <tr class="hit"><td>04</td><td>IntentRoutingNode</td><td><code>intent_classification</code></td><td>Điều hướng node kế — không đổi State</td></tr>
+          <tr class="dim"><td>05A</td><td>DirectLLMNode</td><td><code>user_query</code></td><td>Trả lời trực tiếp, không RAG (không đi qua trong ví dụ này)</td></tr>
+          <tr class="dim"><td>05B</td><td>OffTopicRejectNode</td><td><code>user_query</code>, <code>intent_classification</code></td><td>Template từ chối (không đi qua trong ví dụ này)</td></tr>
+          <tr class="hit"><td>06</td><td>QueryTransformationNode</td><td><code>mode</code>, <code>user_query</code></td><td><code>transformed_queries[]</code> (HyDE)</td></tr>
+          <tr class="dim"><td>07</td><td>AcademicComparisonNode</td><td><code>user_query</code></td><td><code>comparison_meta</code> (không đi qua — không phải câu hỏi so sánh)</td></tr>
+          <tr class="dim"><td>08</td><td>CalculationNode</td><td><code>user_query</code></td><td><code>calculation_result</code> (không đi qua — không phải câu hỏi tính toán)</td></tr>
+          <tr class="hit"><td>10</td><td>RetrievalFilteringNode</td><td><code>transformed_queries[]</code>, <code>academic_security_context</code></td><td><code>raw_retrieved_chunks[]</code> (Top 15–20)</td></tr>
+          <tr class="hit"><td>11</td><td>PostRetrievalRerankNode</td><td><code>raw_retrieved_chunks[]</code>, <code>user_query</code></td><td><code>has_valid_context</code>, <code>filtered_context_chunks[]</code> (Top 3–5)</td></tr>
+          <tr class="hit"><td>12</td><td>GenerationSynthesisNode</td><td><code>filtered_context_chunks</code>, <code>academic_security_context</code></td><td>Câu trả lời + trích dẫn, hoặc <code>ask_user_form</code></td></tr>
+          <tr class="dim"><td>13</td><td>TicketFallbackNode</td><td><code>has_valid_context=false</code></td><td>CTA tạo ticket (không đi qua — rerank đạt ngưỡng)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Node 02 rã JWT ra gì</h3>
+    <p>Câu hỏi trong hồ sơ này đến từ người dùng <strong>chưa đăng nhập</strong> — không có <code>jwt_token</code>. Node 02 không lỗi, nó dựng bối cảnh mặc định hẹp nhất:</p>
+    <pre class="block verified"><code>GUEST_CONTEXT = AcademicSecurityContext(
+    user_id=None,
+    role="KHACH",
+    organization_scopes=["GLOBAL"],   # chỉ văn bản công khai toàn trường
+    max_access_level=1,               # cấp thấp nhất
+    student_program=None,
+    faculty_code=None,
+)</code></pre>
+    <p class="step-note">
+      Hệ quả xuyên suốt hồ sơ: hồ sơ trống hoàn toàn, nên hai thuộc tính lộ ra ở Phần III đều
+      phải hỏi — kể cả thuộc tính mà một sinh viên đã đăng nhập đương nhiên tự biết (khóa
+      tuyển sinh), vì không có gì để suy ra nó từ profile.
+    </p>
+  </section>
+
+  <!-- ============================================================ PART II -->
+  <section class="part" id="assembly">
+    <div class="part-head"><span class="part-num">PHẦN II</span><h2>Nạp & Lắp Ghép Template</h2></div>
+    <p class="part-thesis">
+      System prompt không phải một file — nó là 9 khối YAML tĩnh ghép với dữ liệu động từ
+      State, theo đúng 2 pha: nạp rồi lồng ghép. Phần này chỉ ra nội dung thật của từng khối,
+      không phải mô tả trừu tượng.
+    </p>
+
+    <h3>Pha 1 — Nạp file tĩnh vào bộ nhớ đệm</h3>
+    <p>9 file trong <code>prompt_template/common/</code> + 1 khung chính trong <code>main/</code> được đọc một lần khi khởi chạy, giữ nguyên placeholder <code>{tên}</code> dạng Format String của Python:</p>
+    <pre class="block"><code>header.yaml · academic_metadata.yaml · security_access_control.yaml
+academic_domain_rules.yaml · response_style.yaml · citation_rules.yaml
+prepared_context.yaml · task_1.yaml · task_2.yaml · ask_user_form_guide.yaml
+                                    │
+                                    ▼
+                     main/chat_academic_advisory.yaml  (khung chính)</code></pre>
+
+    <h3>Pha 2a — Format các khối con bằng dữ liệu State</h3>
+    <p>Khối metadata gộp hai nguồn thuộc tính vào <strong>hai thẻ XML tên khác hẳn nhau</strong> — đây là nội dung thật của <code>academic_metadata.yaml</code>:</p>
+    <pre class="block verified"><code>## Thông Tin Tài Khoản Người Dùng &amp; Phân Quyền Access
+
+Thông tin đã được Nhà trường xác minh (giải mã từ token đăng nhập):
+&lt;academic_user_context&gt;
+  - Mã người dùng: {user_id}
+  - Vai trò (Role): {role}
+  - Đơn vị / Khoa chuyên môn (Scopes): {organization_scopes}
+  - Cấp độ truy cập bảo mật tối đa (Max Access Level): {max_access_level}
+&lt;/academic_user_context&gt;
+
+Thuộc tính do sinh viên TỰ KHAI trong hội thoại, CHƯA được Nhà trường xác minh:
+&lt;student_declared_attributes&gt;
+  {confirmed_metadata}
+&lt;/student_declared_attributes&gt;</code></pre>
+    <p class="cap">Với câu hỏi trong hồ sơ này ở lượt 1: <code>role=KHACH</code>, và <code>&lt;student_declared_attributes&gt;</code> render ra đúng một dòng — "Chưa có thuộc tính nào được sinh viên xác nhận." — không bao giờ để trống, vì thẻ XML rỗng dễ bị LLM đọc thành lỗi nạp dữ liệu.</p>
+
+    <h3>Pha 2b — Ráp khung chính</h3>
+    <p>Toàn bộ khối con đã format được giải nén vào khung sườn <code>chat_academic_advisory.yaml</code> — đây là nội dung thật, không rút gọn:</p>
+    <pre class="block stamp"><code>{header}
+{academic_metadata}
+{security_access_control}
+{academic_domain_rules}
+{response_style}
+{citation_rules}
+{prepared_context}
+{task_1}
+{task_2}
+
+## Hướng Dẫn Xử Lý
+Dựa vào bối cảnh trích xuất ở trên (&lt;academic_context&gt;), hãy trả lời trực
+diện, đầy đủ và chính xác câu hỏi của người dùng bên dưới. Áp đúng quy tắc
+định dạng theo loại câu hỏi (advisory/procedure/document/calendar) trong
+phần ACADEMIC DOMAIN RULES phía trên.
+
+Câu hỏi: {user_query}</code></pre>
+    <p class="cap">9 khối, đúng 1 lần <code>.format(**base_params)</code> ở tầng ngoài cùng. <code>{task_1}</code> là chuỗi tĩnh (không có placeholder riêng — tri thức đã nằm trong <code>{prepared_context}</code>); <code>{task_2}</code> là khối duy nhất phải format 2 lớp, vì tự nó mang placeholder <code>{missing_metadata_to_confirm}</code> và nhúng lồng <code>{ask_user_form_guide}</code>.</p>
+  </section>
+
+  <!-- ============================================================ TICKET -->
+  <div class="ticket"><span class="ticket-label">Lượt 1 mở hồ sơ</span></div>
+
+  <!-- ============================================================ PART III -->
+  <section class="part" id="turn1" style="border-top:none; margin-top:26px; padding-top:0;">
+    <div class="part-head"><span class="part-num">PHẦN III</span><h2>Lượt 1 — Metadata Còn Thiếu</h2></div>
+    <p class="part-thesis">
+      Người dùng: <em>"Em muốn hỏi thủ tục miễn giảm học phí, nộp hồ sơ ở đâu ạ?"</em>
+      — chưa đăng nhập, không nêu diện hay khóa nhập học.
+    </p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="marker">01–04</div>
+        <div class="step-body">
+          <p class="step-name">Không phải chào → phân loại → định tuyến</p>
+          <div class="io-grid">
+            <div class="io-box"><p class="io-label">Input</p><pre>user_query: "Em muốn hỏi thủ tục miễn
+giảm học phí, nộp hồ sơ ở đâu ạ?"</pre></div>
+            <div class="io-box"><p class="io-label">Output</p><pre>intent_classification: {
+  primary_intent: "academic_advisory",
+  routing_mode: "SINGLE", confidence: 0.94
+}
+→ QueryTransformationNode(mode="HYDE")</pre></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="marker">06</div>
+        <div class="step-body">
+          <p class="step-name"><code>QueryTransformationNode</code> — chưa biết gì để lọc</p>
+          <div class="io-grid">
+            <div class="io-box"><p class="io-label">Input</p><pre>mode: "HYDE"
+user_query (nguyên văn, chưa có
+thuộc tính nào bổ sung)</pre></div>
+            <div class="io-box"><p class="io-label">Output</p><pre>transformed_queries: [
+ "Theo Quy chế miễn giảm học phí của
+  Nhà trường, sinh viên thuộc diện
+  được miễn giảm nộp hồ sơ tại đơn vị
+  phụ trách theo từng diện..."
+]</pre></div>
+          </div>
+          <p class="step-note">Type B không có checklist tĩnh — tại bước này chưa ai biết chủ đề sẽ phân nhánh theo thuộc tính gì, nên HyDE doc sinh thẳng từ câu hỏi gốc.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="marker">10–11</div>
+        <div class="step-body">
+          <p class="step-name">Retrieval + Rerank</p>
+          <div class="io-grid">
+            <div class="io-box"><p class="io-label">Input</p><pre>transformed_queries[]
+academic_security_context
+(scopes=["GLOBAL"], level=1)</pre></div>
+            <div class="io-box"><p class="io-label">Output</p><pre>has_valid_context: true
+filtered_context_chunks: [ 1 chunk,
+rerank_score 0.83 ]</pre></div>
+          </div>
+          <pre class="block"><code>Điều 11: Sinh viên diện CHÍNH SÁCH nộp hồ sơ tại Phòng CTSV kèm
+giấy xác nhận của địa phương, trước 30/9 [2]. Sinh viên diện HỌC
+BỔNG TÀI TRỢ làm việc trực tiếp với đơn vị tài trợ theo quy trình
+riêng [2]. Sinh viên diện VAY VỐN TÍN DỤNG nộp hồ sơ qua Ngân hàng
+Chính sách Xã hội nơi cư trú [2]. Đối với khóa tuyển sinh TỪ 2023
+TRỞ VỀ SAU, mức miễn giảm áp dụng theo Quyết định 88/2023; các khóa
+TRƯỚC 2023 áp dụng Quyết định 45/2019 [3].</code></pre>
+        </div>
+      </div>
+
+      <div class="step miss">
+        <div class="marker">12</div>
+        <div class="step-body">
+          <p class="step-name"><code>GenerationSynthesisNode</code> — điểm phát hiện Type B, hai thuộc tính cùng lúc</p>
+          <p class="step-note">
+            <code>task_1.yaml</code> đối chiếu đủ ba nguồn (<code>&lt;academic_user_context&gt;</code>,
+            <code>&lt;student_declared_attributes&gt;</code>, câu hỏi) — cả ba đều im lặng về hai thuộc tính:
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Thuộc tính</th><th>Vì sao không dựng bảng (CÁCH 1)</th><th>Field tự đặt</th></tr></thead>
+              <tbody>
+                <tr><td>Diện miễn giảm</td><td>3 nhánh không chung tiêu chí — mỗi diện một quy trình/bộ hồ sơ khác hẳn</td><td><code>dien_mien_giam</code></td></tr>
+                <tr><td>Khóa tuyển sinh</td><td>Người dùng là khách, hồ sơ trống — không có gì để suy, dù đây vốn là thứ một sinh viên thật tự biết</td><td><code>khoa_nhap_hoc</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="step-note">Hai thuộc tính ĐỘC LẬP (không thuộc tính nào nằm trong tập giá trị của cái kia) → gom chung một form theo đúng rule "HỎI BAO NHIÊU FIELD MỘT LÚC" ở <code>task_2.yaml</code>.</p>
+
+          <div class="response">
+            <p class="rtag">Phản hồi LLM — lượt 1</p>
+            <p>Về thủ tục miễn giảm học phí, quy định nơi nộp hồ sơ hiện khác nhau tuỳ diện của sinh viên <span class="cite">[2]</span>, và mức miễn giảm còn phụ thuộc khóa tuyển sinh <span class="cite">[3]</span>.</p>
+            <p class="q">Bạn cho mình biết thêm hai thông tin sau để hướng dẫn đúng thủ tục nhé?</p>
+            <pre class="block declared" style="margin:0"><code>{"type": "ask_user_form", "fields": [
+  {"field": "dien_mien_giam", "label": "Diện miễn giảm học phí",
+   "options": [
+     {"id": "chinh_sach", "label": "Diện chính sách"},
+     {"id": "hoc_bong_tai_tro", "label": "Diện học bổng tài trợ"},
+     {"id": "vay_von", "label": "Diện vay vốn tín dụng"}
+   ]},
+  {"field": "khoa_nhap_hoc", "label": "Khóa tuyển sinh",
+   "options": [
+     {"id": "tu_2023", "label": "Từ 2023 trở về sau"},
+     {"id": "truoc_2023", "label": "Trước 2023"}
+   ]}
+]}</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ BOUNDARY -->
+  <section class="part" id="boundary">
+    <div class="part-head"><span class="part-num">CẦU NỐI</span><h2>Build Missing Metadata — Từ Output Sang State</h2></div>
+    <p class="part-thesis">
+      Bước deterministic, không LLM, chạy ngay sau khi node 12 trả response thô — trước khi
+      trả kết quả về người dùng. Đây là nơi <code>&lt;missing_metadata_to_confirm&gt;</code> của
+      lượt SAU được sinh ra.
+    </p>
+    <pre class="block declared"><code>def collect_pending_clarification(raw_llm_response: str) -> PendingClarification | None:
+    json_block = extract_trailing_json_block(raw_llm_response)   # khối ```json cuối cùng
+    parsed = json.loads(json_block)
+    fields = parsed["fields"]                                    # luôn là mảng
+
+    return PendingClarification(
+        origin_node="QueryTransformationNode",   # gán cứng — Type B luôn resume ở node 06
+        pending_sub_query_id=parsed.get("sub_query_id"),
+        missing_fields=[f["field"] for f in fields],
+        options=[[o["id"] for o in f["options"]] if f.get("options") else None
+                 for f in fields],
+        retry_count=0,   # bộ field này chưa từng bị hỏi trước đó
+    )</code></pre>
+    <pre class="block declared"><code>state.pending_clarification = PendingClarification(
+    origin_node="QueryTransformationNode",
+    pending_sub_query_id=None,
+    missing_fields=["dien_mien_giam", "khoa_nhap_hoc"],
+    options=[
+        ["chinh_sach", "hoc_bong_tai_tro", "vay_von"],
+        ["tu_2023", "truoc_2023"],
+    ],
+    retry_count=0,
+)</code></pre>
+    <p class="step-note">Trạng thái này được giữ nguyên trong State, chờ tin nhắn kế tiếp của người dùng — chưa nạp vào prompt nào cả, vì lượt 1 đã kết thúc.</p>
+  </section>
+
+  <!-- ============================================================ TICKET -->
+  <div class="ticket"><span class="ticket-label">Lượt 2 — trả lời một phần</span></div>
+
+  <!-- ============================================================ PART IV -->
+  <section class="part" id="turn2" style="border-top:none; margin-top:26px; padding-top:0;">
+    <div class="part-head"><span class="part-num">PHẦN IV</span><h2>Lượt 2 — Trả Lời, Vẫn Còn Thiếu</h2></div>
+    <p class="part-thesis">
+      Người dùng bấm chip <strong>"Diện chính sách"</strong> rồi bấm Gửi — nhưng bỏ trống ô
+      khóa tuyển sinh (không nhớ, hoặc lướt qua). Form có 2 field nên không có đường đối chiếu
+      văn bản tự do — chỉ nhận đúng những gì UI gửi lên trong <code>form_submission</code>.
+    </p>
+
+    <div class="steps">
+      <div class="step miss">
+        <div class="marker">02</div>
+        <div class="step-body">
+          <p class="step-name">Clarification Guard — <code>resolve_form()</code>, điền một phần vẫn được giữ</p>
+          <div class="io-grid">
+            <div class="io-box"><p class="io-label">Input</p><pre>form_submission: {"dien_mien_giam": "chinh_sach"}
+(khoa_nhap_hoc: không có trong payload)</pre></div>
+            <div class="io-box"><p class="io-label">Output</p><pre>resolved:   {"dien_mien_giam": "chinh_sach"}
+unresolved: ["khoa_nhap_hoc"]</pre></div>
+          </div>
+          <pre class="block declared"><code>state.confirmed_metadata.update(resolved)
+# → confirmed_metadata = {"dien_mien_giam": "chinh_sach"}
+
+pending.retry_count += 1        # 0 → 1, vì vẫn còn field chưa xong
+_keep_only(pending, unresolved) # form thu lại chỉ còn 1 field
+# → pending.missing_fields = ["khoa_nhap_hoc"]
+#   pending.options         = [["tu_2023", "truoc_2023"]]
+
+return pending.origin_node      # "QueryTransformationNode" — bỏ qua
+                                 # MessageClassificationNode</code></pre>
+          <p class="step-note">Vứt cả form vì thiếu một ô là cách nhanh nhất để mất người dùng — <code>dien_mien_giam</code> đã chốt được giữ nguyên, chỉ phần treo được hỏi lại.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="marker">06</div>
+        <div class="step-body">
+          <p class="step-name"><code>QueryTransformationNode</code> — ghép thuộc tính vừa chốt</p>
+          <div class="io-grid">
+            <div class="io-box"><p class="io-label">Input</p><pre>confirmed_metadata:
+  {"dien_mien_giam": "chinh_sach"}</pre></div>
+            <div class="io-box"><p class="io-label">Output</p><pre>transformed_queries: [
+ "Theo Quy chế miễn giảm học phí áp
+  dụng cho sinh viên diện chính
+  sách, hồ sơ nộp tại đơn vị phụ
+  trách..."
+]</pre></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="marker">10–11</div>
+        <div class="step-body">
+          <p class="step-name">Retrieval lại — cùng văn bản, chunk sát hơn</p>
+          <p class="step-note">Điều 11 vẫn là nguồn đúng — nó chứa cả đoạn "diện chính sách" lẫn đoạn "khóa tuyển sinh" trong cùng một chunk, nên <code>&lt;academic_context&gt;</code> lượt này không đổi so với lượt 1.</p>
+        </div>
+      </div>
+
+      <div class="step miss">
+        <div class="marker">12</div>
+        <div class="step-body">
+          <p class="step-name"><code>GenerationSynthesisNode</code> — nạp lại <code>&lt;missing_metadata_to_confirm&gt;</code></p>
+          <p class="step-note">Loader đọc <code>state.pending_clarification</code> (vừa được Guard thu gọn) và serialize thẳng vào placeholder của <code>task_2.yaml</code> — đây là input thật của <code>{task_2}</code> ở lượt này:</p>
+          <pre class="block declared"><code>&lt;missing_metadata_to_confirm&gt;
+{"type": "ask_user_form", "fields": [
+  {"field": "khoa_nhap_hoc", "options": [
+    {"id": "tu_2023", "label": "tu_2023"},
+    {"id": "truoc_2023", "label": "truoc_2023"}
+  ]}
+]}
+&lt;/missing_metadata_to_confirm&gt;</code></pre>
+          <p class="step-note">
+            <code>task_2.yaml</code> áp đúng "Nguồn 1" — field đã có sẵn trong khối này thì
+            dùng LẠI ĐÚNG tên <code>khoa_nhap_hoc</code> và tập <code>options</code>, không tự
+            đổi tên dù có nghĩ ra cách gọi hay hơn. Song song, <code>academic_metadata.yaml</code>
+            giờ mang:
+          </p>
+          <pre class="block verified"><code>&lt;student_declared_attributes&gt;
+    - dien_mien_giam: chinh_sach
+&lt;/student_declared_attributes&gt;</code></pre>
+          <p class="step-note"><code>task_1.yaml</code> thấy <code>dien_mien_giam</code> đã có trong nguồn thứ hai (đã tự khai) → trả lời thẳng nhánh chính sách, KHÔNG hỏi lại field này. <code>khoa_nhap_hoc</code> vẫn im lặng ở cả ba nguồn → vẫn phải hỏi.</p>
+
+          <div class="response">
+            <p class="rtag">Phản hồi LLM — lượt 2</p>
+            <p>Với diện chính sách, bạn nộp hồ sơ tại Phòng Công tác Sinh viên kèm giấy xác nhận của địa phương, trước ngày 30/9 <span class="cite">[2]</span>. Mức miễn giảm cụ thể áp dụng theo quyết định khác nhau tuỳ khóa tuyển sinh của bạn <span class="cite">[3]</span>.</p>
+            <p class="q">Bạn thuộc khóa tuyển sinh nào ạ?</p>
+            <pre class="block declared" style="margin:0"><code>{"type": "ask_user_form", "fields": [
+  {"field": "khoa_nhap_hoc", "label": "Khóa tuyển sinh",
+   "options": [
+     {"id": "tu_2023", "label": "Từ 2023 trở về sau"},
+     {"id": "truoc_2023", "label": "Trước 2023"}
+   ]}
+]}</code></pre>
+          </div>
+
+          <div class="note stamp">
+            <p class="note-title">Vì sao retry_count không reset về 0</p>
+            <p>
+              Post-processing lượt 2 tính giao giữa field vừa hỏi (<code>{"khoa_nhap_hoc"}</code>)
+              và field đã hỏi ở state trước khi Guard chạy (<code>{"dien_mien_giam", "khoa_nhap_hoc"}</code>)
+              — giao khác rỗng, nên đây được tính là <strong>cùng một lần hỏi chưa xong</strong>,
+              không phải một câu hỏi mới. <code>retry_count</code> giữ nguyên ở 1 (Guard vừa tăng),
+              không quay về 0. Nếu người dùng tiếp tục bỏ trống lượt 3, retry_count chạm ngưỡng
+              <code>MAX_CLARIFICATION_RETRY = 2</code> và hệ thống buộc trả lời an toàn thay vì hỏi mãi.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ CLOSER -->
+  <section class="closer">
+    <h2 style="margin:0">Điều hồ sơ này chứng minh</h2>
+    <ul>
+      <li>Một field trả lời rõ ở lượt N thì <strong>không bao giờ</strong> xuất hiện lại trong <code>&lt;missing_metadata_to_confirm&gt;</code> ở lượt N+1 — nó chuyển hẳn sang <code>&lt;student_declared_attributes&gt;</code>.</li>
+      <li>Form nhiều field không vỡ khi người dùng chỉ trả lời được một phần — phần đã trả lời được giữ, phần còn lại thu nhỏ form chứ không hỏi lại từ đầu.</li>
+      <li>Tên field và tập <code>options</code> là bất biến xuyên suốt một lần hỏi chưa xong — đổi tên là thứ duy nhất thực sự làm hỏng cơ chế này.</li>
+      <li><code>retry_count</code> đo số lần <em>cùng một field</em> chưa được giải quyết, không đo tổng số câu hỏi trong phiên — hai khái niệm dễ bị nhầm nhưng chi phối hai hành vi khác nhau.</li>
+    </ul>
+    <p class="colophon">
+      Nội dung template trích nguyên văn từ <code>prompt_template/common/academic_metadata.yaml</code>,
+      <code>task_1.yaml</code>, <code>task_2.yaml</code>, <code>main/chat_academic_advisory.yaml</code>.
+      Cơ chế state tham chiếu <code>nodes/02_security_context_extraction_node.md</code>,
+      <code>nodes/12_generation_synthesis_node.md</code>, <code>detail_prompt_template_loader.md</code>.
+      Văn bản Điều 11 và các quyết định 88/2023, 45/2019 là ví dụ minh hoạ, không phải quy chế thật.
+    </p>
+  </section>
+
+</div>
