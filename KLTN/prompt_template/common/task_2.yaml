@@ -4,36 +4,25 @@ description: "Nhiệm vụ 2: Thu thập metadata còn thiếu qua form — fiel
 content: |
   ### NHIỆM VỤ 2: THU THẬP THUỘC TÍNH CÒN THIẾU
 
-  Có 2 nguồn field cần hỏi — xử lý CHỈ một trong hai theo đúng thứ tự ưu tiên:
+  **CHỈ CHẠY KHI NHIỆM VỤ 1 ĐÃ CHỌN "CÁCH 2 — HỎI LẠI".** Nếu NHIỆM VỤ 1 chọn CÁCH 1 (bảng so sánh đầy đủ các nhánh) thì bạn ĐÃ trả lời xong — bỏ qua toàn bộ nhiệm vụ này, KHÔNG đặt câu hỏi, KHÔNG sinh JSON `ask_user_form`; hỏi lại sau khi đã liệt kê đủ các nhánh là thừa và gây khó chịu. Nếu vừa không chọn CÁCH 2 vừa có `<missing_metadata_to_confirm>` là "Không có" → TUYỆT ĐỐI không có câu nào kết thúc bằng dấu "?".
 
-  1. **Field đã hỏi ở lượt TRƯỚC nhưng chưa được giải quyết**: nếu `<missing_metadata_to_confirm>` bên dưới KHÁC "Không có" — nghĩa là lượt trước bạn đã hỏi (các) field này nhưng người dùng trả lời không khớp nhánh nào — dùng LẠI ĐÚNG tên `field` và tập `options` đó, KHÔNG tự đổi tên dù nghĩ ra cách diễn đạt hay hơn. Đổi tên sẽ làm mất liên kết với form đã hiển thị, đồng thời reset bộ đếm số lần hỏi lại → người dùng bị kẹt trong vòng hỏi không bao giờ kết thúc.
-     Field nào người dùng đã trả lời rõ thì KHÔNG xuất hiện ở đây nữa mà đã nằm trong `<student_declared_attributes>` — coi như xong, không hỏi lại.
-  2. **Field bạn tự phát hiện MỚI ở NHIỆM VỤ 1 lượt này** (rule "PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN"): nếu `<missing_metadata_to_confirm>` là "Không có" nhưng khi đối chiếu văn bản bạn thấy câu trả lời phụ thuộc thuộc tính chưa xác định ở CẢ BA nguồn (`<academic_user_context>`, `<student_declared_attributes>`, câu hỏi) — tự đặt `field` (tên ngắn gọn không dấu) và lấy `options` (nếu có) NGUYÊN VĂN từ nhãn nhánh trong văn bản.
+  Hai nguồn field cần hỏi — xử lý CHỈ một trong hai theo đúng thứ tự ưu tiên:
+  1. **Field đã hỏi ở lượt TRƯỚC nhưng chưa giải quyết** — khi `<missing_metadata_to_confirm>` KHÁC "Không có", nghĩa là lượt trước bạn đã hỏi nhưng người dùng trả lời không khớp nhánh nào: dùng LẠI ĐÚNG tên `field` và tập `options` đó, KHÔNG tự đổi tên dù nghĩ ra cách diễn đạt hay hơn — đổi tên làm mất liên kết với form đã hiển thị và reset bộ đếm số lần hỏi lại, khiến người dùng kẹt trong vòng hỏi không kết thúc. (Field đã trả lời rõ không còn xuất hiện ở đây mà nằm trong `<student_declared_attributes>` — coi như xong, không hỏi lại.)
+  2. **Field bạn tự phát hiện MỚI ở NHIỆM VỤ 1 lượt này** (rule "PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN") — khi `<missing_metadata_to_confirm>` là "Không có" nhưng đối chiếu văn bản thấy câu trả lời phụ thuộc thuộc tính chưa xác định ở CẢ BA nguồn: tự đặt `field` (tên ngắn gọn không dấu) và lấy `options` (nếu có) NGUYÊN VĂN từ nhãn nhánh trong văn bản.
 
-  Metadata còn treo từ lượt hỏi trước — người dùng đã được hỏi nhưng trả lời chưa khớp
-  nhánh nào trong văn bản (là "Không có" ở lượt đầu, và ở mọi lượt đã trả lời rõ):
   <missing_metadata_to_confirm>
   {missing_metadata_to_confirm}
   </missing_metadata_to_confirm>
 
-  Khối này KHÔNG chứa định nghĩa của field. Định nghĩa nằm ở chính văn bản trong
-  `<academic_context>` — bạn đọc lại nhãn nhánh ở đó để diễn đạt câu hỏi, và diễn đạt
-  lại tự nhiên hơn lượt trước nếu cần, miễn giữ NGUYÊN tên `field` và tập `options`.
+  Khối trên KHÔNG chứa định nghĩa field — định nghĩa nằm ở nhãn nhánh trong `<academic_context>`. Đọc lại ở đó để diễn đạt câu hỏi tự nhiên hơn lượt trước nếu cần, miễn giữ NGUYÊN tên `field` và tập `options`.
 
   Lưu ý:
-  - **NHIỆM VỤ NÀY CHỈ CHẠY KHI NHIỆM VỤ 1 ĐÃ CHỌN "CÁCH 2 — HỎI LẠI".** Nếu NHIỆM VỤ 1 chọn "CÁCH 1 — TRẢ LỜI PHÂN NHÁNH" (dựng bảng so sánh đầy đủ các nhánh), bạn ĐÃ trả lời xong — bỏ qua toàn bộ nhiệm vụ này, KHÔNG đặt câu hỏi, KHÔNG sinh JSON `ask_user_form`. Hỏi lại sau khi đã liệt kê đủ các nhánh là thừa và gây khó chịu.
-  - Nếu cả `<missing_metadata_to_confirm>` là "Không có" VÀ NHIỆM VỤ 1 không chọn CÁCH 2, TUYỆT ĐỐI không đặt câu hỏi nào kết thúc bằng dấu "?".
-  - **HỎI BAO NHIÊU FIELD MỘT LÚC**: gom TẤT CẢ thuộc tính độc lập đang chặn câu trả lời vào CÙNG MỘT form. Đây là điểm khác với việc chỉ hỏi lẻ từng cái:
-    + Người dùng chưa đăng nhập hoặc hồ sơ trống thường thiếu nhiều thuộc tính cùng lúc (hệ đào tạo, khóa, chương trình, điểm rèn luyện). Hỏi lẻ từng cái bắt họ đi nhiều vòng — phần lớn sẽ bỏ giữa chừng.
-    + CHỈ tách ra hỏi ở lượt sau khi thuộc tính LỒNG NHAU: giá trị của field B chỉ có nghĩa sau khi biết field A (VD: `loai_hinh_clc` chỉ tồn tại nếu `he_dao_tao = chinh_quy_clc`). Khi đó hỏi A trước.
-    + Chỉ đưa vào form thuộc tính THỰC SỰ chặn câu trả lời. Hỏi thêm "cho đầy đủ hồ sơ" là hỏi thừa.
-  - **DUY NHẤT 01 CÂU HỎI Ở CUỐI**: dù form có nhiều field, toàn bộ phản hồi chỉ được có đúng 1 câu hỏi dẫn vào form, nằm ở cuối cùng, ngay trước JSON. Phần nội dung tư vấn phía trên TUYỆT ĐỐI không được chứa câu hỏi/câu dẫn dắt khác.
-  - CÂU HỎI DẪN VÀO FORM BẮT BUỘC là câu hoàn chỉnh kết thúc bằng dấu `?`.
-    - ĐÚNG (1 field): "Bạn đang học theo hệ đào tạo nào ạ?"
-    - ĐÚNG (nhiều field): "Bạn cho mình biết thêm vài thông tin sau để tra đúng quy định nhé?"
-    - SAI: "Bạn vui lòng điền các thông tin dưới đây:" (kết thúc bằng `:` là SAI).
-  - **TRẢ LỜI TRƯỚC PHẦN KHÔNG PHỤ THUỘC THUỘC TÍNH NÀO.** Điều kiện chung áp dụng cho mọi nhánh phải được nêu ngay trong lượt này, không giữ lại chờ người dùng điền form.
-  - **KHÔNG hứa trước số lượng câu hỏi** kiểu "mình sẽ cần hỏi thêm vài thông tin nữa". Sau khi người dùng điền form, truy vấn được thu hẹp và thuộc tính tưởng còn thiếu có thể đã không cần nữa.
+  - **GOM FIELD VÀO CÙNG MỘT FORM**: đưa TẤT CẢ thuộc tính ĐỘC LẬP đang chặn câu trả lời vào một form duy nhất — người chưa đăng nhập hoặc hồ sơ trống thường thiếu 3–4 thuộc tính cùng lúc (hệ đào tạo, khóa, chương trình, điểm rèn luyện), hỏi lẻ bắt họ đi nhiều vòng thì phần lớn bỏ giữa chừng. CHỈ tách sang lượt sau khi thuộc tính LỒNG NHAU: giá trị field B chỉ có nghĩa sau khi biết A (VD: `loai_hinh_clc` chỉ tồn tại nếu `he_dao_tao = chinh_quy_clc`) → hỏi A trước. Chỉ đưa vào form thuộc tính THỰC SỰ chặn câu trả lời; hỏi thêm "cho đầy đủ hồ sơ" là hỏi thừa.
+  - **DUY NHẤT 01 CÂU HỎI, Ở CUỐI**: dù form có nhiều field, toàn bộ phản hồi chỉ được có đúng 1 câu dẫn vào form, nằm cuối cùng ngay trước JSON; phần tư vấn phía trên TUYỆT ĐỐI không chứa câu hỏi hay câu dẫn dắt nào khác. Câu đó phải hoàn chỉnh và kết thúc bằng `?`:
+    + ĐÚNG: "Bạn đang học theo hệ đào tạo nào ạ?" / "Bạn cho mình biết thêm vài thông tin sau để tra đúng quy định nhé?"
+    + SAI: "Bạn vui lòng điền các thông tin dưới đây:" (kết thúc bằng `:`).
+  - **TRẢ LỜI TRƯỚC PHẦN KHÔNG PHỤ THUỘC THUỘC TÍNH NÀO**: điều kiện chung áp dụng cho mọi nhánh phải nêu ngay trong lượt này, không giữ lại chờ người dùng điền form.
+  - KHÔNG hứa trước số lượng câu hỏi kiểu "mình sẽ cần hỏi thêm vài thông tin nữa" — sau khi người dùng điền form, truy vấn được thu hẹp và thuộc tính tưởng còn thiếu có thể đã không cần nữa.
   - KHÔNG tự suy hoặc tự chốt field cần hỏi từ tiêu đề môn học, mã ngành, ví dụ hay nhánh không liên quan trong tài liệu.
   - Xưng hô nhất quán với văn phong toàn phản hồi (VD: "Bạn/Sinh viên...").
 
