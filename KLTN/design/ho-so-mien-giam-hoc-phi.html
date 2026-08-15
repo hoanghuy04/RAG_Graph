@@ -346,7 +346,6 @@
     padding: 6px 13px;
     font-size: 13px;
   }
-  .chip.picked { border-color: var(--verified); background: var(--verified-bg); color: var(--verified); font-weight: 700; }
   .send-btn {
     display: inline-block; margin-top: 10px;
     background: var(--ink); color: var(--surface);
@@ -854,12 +853,7 @@ return pending.origin_node      # "QueryTransformationNode" — bỏ qua
 
         <span class="turn-tag">Lượt 2</span>
 
-        <div class="msg-row user">
-          <div class="bubble user">
-            <p class="ask-label" style="color:var(--surface);opacity:.75;margin-top:0">Đã chọn</p>
-            <div class="chip-row"><span class="chip picked">✓ Diện chính sách</span></div>
-          </div>
-        </div>
+        <div class="msg-row user"><div class="bubble user"><p>Diện chính sách</p></div></div>
         <div class="meta-row user"><span class="meta">10:34 · gửi form, bỏ trống 1 ô</span></div>
 
         <div class="msg-row bot">
@@ -871,7 +865,6 @@ return pending.origin_node      # "QueryTransformationNode" — bỏ qua
               <span class="chip">Từ 2023 trở về sau</span>
               <span class="chip">Trước 2023</span>
             </div>
-            <span class="send-btn">Gửi</span>
             <div class="form-state">1/1 field còn trống — Diện miễn giảm đã chốt, không hỏi lại</div>
           </div>
         </div>
@@ -879,12 +872,7 @@ return pending.origin_node      # "QueryTransformationNode" — bỏ qua
 
         <span class="turn-tag">Lượt 3</span>
 
-        <div class="msg-row user">
-          <div class="bubble user">
-            <p class="ask-label" style="color:var(--surface);opacity:.75;margin-top:0">Đã chọn</p>
-            <div class="chip-row"><span class="chip picked">✓ Từ 2023 trở về sau</span></div>
-          </div>
-        </div>
+        <div class="msg-row user"><div class="bubble user"><p>Từ 2023 trở về sau</p></div></div>
         <div class="meta-row user"><span class="meta">10:35 · gửi form đầy đủ</span></div>
 
         <div class="msg-row bot">
@@ -911,7 +899,10 @@ return pending.origin_node      # "QueryTransformationNode" — bỏ qua
     </div>
 
     <p class="cap" style="text-align:center;max-width:none;margin-top:12px;">
-      Chip màu trung tính = lựa chọn hiển thị trong form; chip viền xanh có dấu ✓ = giá trị người dùng vừa gửi.
+      Chip trong bubble của bot là lựa chọn hiển thị trong form. Khi người dùng bấm Gửi, tin nhắn của họ
+      hiện lại như văn bản bình thường — lấy nguyên <code>label</code> của (các) lựa chọn đã chọn, ghép bằng
+      dấu phẩy nếu chọn nhiều field cùng lúc (VD: "Diện chính sách, Từ 2023 trở về sau"). Nút Gửi chỉ xuất
+      hiện khi form có <strong>từ 2 field trở lên</strong> — form 1 field thì bấm chip là gửi luôn.
       Dòng mono dưới mỗi bubble của bot là trạng thái <code>pending_clarification</code> tương ứng — không hiển thị thật trên UI, chỉ chú thích cho hồ sơ này.
     </p>
   </section>
