@@ -71,12 +71,15 @@ Dữ liệu động từ Graph State (như metadata người dùng, tài liệu 
       context_chunks=formatted_chunks_string
   )
   ```
-* **Khối Hỏi Lại Metadata (`{task_2}`)** — chỉ có ở `chat_academic_advisory` và `chat_multi_intent_synthesis` (2 template duy nhất chạy qua flow Advisory hợp nhất, nơi có thể phát sinh Type B — xem [`missing_metadata_clarification_design.md`](missing_metadata_clarification_design.md)). `task_2.yaml` tự nó có 1 placeholder dữ liệu (`{missing_metadata_to_confirm}`) và nhúng lồng `{ask_user_form_guide}`, nên phải format 2 lớp giống LISA:
+* **Khối Hỏi Lại Metadata (`{task_2}`)** — có ở `chat_academic_advisory`, `chat_multi_intent_synthesis` (Type B) **và** `chat_calculation_result` (Type A — xem cập nhật 2026-08 dưới đây; đã bỏ `AskUserClarificationNode`, gộp chung cơ chế). `task_2.yaml` tự nó có 1 placeholder dữ liệu (`{missing_metadata_to_confirm}`) và nhúng lồng `{ask_user_form_guide}`, nên phải format 2 lớp giống LISA, GIỐNG HỆT nhau cho cả hai luồng:
   ```python
   # Nguồn duy nhất của missing_metadata_to_confirm: state.pending_clarification —
-  # do CHÍNH node 12 ghi vào ở lượt hỏi trước đó (Type B tự phát hiện, không có
-  # node extractor riêng nào feed vào đây như lisa). Nếu chưa từng hỏi gì, hoặc
-  # lượt trước đã được giải quyết (node 06 merge câu trả lời + retrieval lại
+  # nhưng AI ghi vào đó khác nhau theo luồng:
+  #   - Type B (Advisory): node 12 ghi SAU khi tự phát hiện trong lúc đọc <academic_context>
+  #     ở lượt hỏi TRƯỚC đó — không có node extractor riêng nào feed vào đây.
+  #   - Type A (Calculation): CalculationNode ghi TRƯỚC khi gọi tới đây, ngay trong
+  #     lượt này — calculation_extractor.yaml đã biết chính xác thiếu gì, không cần đoán.
+  # Nếu chưa từng hỏi gì, hoặc lượt trước đã được giải quyết (Guard merge câu trả lời
   # thành công) thì pending_clarification = None → mặc định "Không có".
   pending = state.pending_clarification
   if pending is not None:
@@ -97,13 +100,15 @@ Dữ liệu động từ Graph State (như metadata người dùng, tài liệu 
       ask_user_form_guide=templates.ask_user_form_guide,   # chuỗi tĩnh, không có placeholder riêng
   )
   ```
-  **Vì sao đọc lại từ `pending_clarification` thay vì luôn "Không có"?** Để xử lý đúng trường hợp retry: nếu ở lượt trước node 12 đã tự đặt field `he_dao_tao`, mà lượt sau người dùng bỏ trống đúng ô đó trong form — node 12 phải thấy lại đúng `he_dao_tao` đã hỏi lần trước để hỏi tiếp, KHÔNG được tự đặt tên field khác (VD đổi thành `hinh_thuc_dao_tao`) vì sẽ làm mất liên kết `id` với form đã hiển thị. Guard đã lược bớt các field người dùng điền xong, nên khối này chỉ còn phần thực sự treo.
+  **Vì sao đọc lại từ `pending_clarification` thay vì luôn "Không có"?** Để xử lý đúng trường hợp retry: nếu ở lượt trước node 12 đã tự đặt field `he_dao_tao` (Type B) hoặc CalculationNode đã đặt `credits_registered` (Type A), mà lượt sau người dùng bỏ trống đúng ô đó trong form — hệ thống phải thấy lại đúng tên field đã hỏi lần trước để hỏi tiếp, KHÔNG được tự đổi tên (VD đổi thành `hinh_thuc_dao_tao`) vì sẽ làm mất liên kết `id` với form đã hiển thị. Guard đã lược bớt các field người dùng điền xong, nên khối này chỉ còn phần thực sự treo.
 
   Thiếu bất kỳ placeholder nào trong hai cái trên là `KeyError` làm hỏng cả lượt hội thoại.
 
-  **`{missing_metadata_to_confirm}` là "Không có" ở lượt đầu tiên của mọi câu hỏi** — và đó là đúng, không phải lỗi. Field Type B chỉ lộ ra khi LLM đọc `<academic_context>`, tức là **sau** khi prompt đã đóng băng; LLM không thể ghi ngược vào input của chính nó. Nó ghi nhận phát hiện bằng khối `ask_user_form` trong **output**, rồi `collect_pending_clarification()` ([`nodes/12`](nodes/12_generation_synthesis_node.md#5-response-post-processing--thu-thập-pending_clarification-từ-output-llm)) parse ra state. Placeholder này chỉ khác "Không có" ở lượt kế tiếp, và chỉ khi người dùng **bỏ trống hoặc điền không khớp** một phần form — nếu điền đủ, guard đã chuyển toàn bộ giá trị sang `confirmed_metadata` và xoá `pending_clarification`.
+  **`{missing_metadata_to_confirm}` là "Không có" ở lượt đầu tiên của MỌI câu hỏi Advisory** — và đó là đúng, không phải lỗi. Field Type B chỉ lộ ra khi LLM đọc `<academic_context>`, tức là **sau** khi prompt đã đóng băng; LLM không thể ghi ngược vào input của chính nó. Nó ghi nhận phát hiện bằng khối `ask_user_form` trong **output**, rồi `collect_pending_clarification()` ([`nodes/12`](nodes/12_generation_synthesis_node.md#5-response-post-processing--thu-thập-pending_clarification-từ-output-llm)) parse ra state. Placeholder này chỉ khác "Không có" ở lượt kế tiếp, và chỉ khi người dùng **bỏ trống hoặc điền không khớp** một phần form — nếu điền đủ, guard đã chuyển toàn bộ giá trị sang `confirmed_metadata` và xoá `pending_clarification`.
 
-  Không còn placeholder `{missing_field_definition}`: `PendingClarification` không lưu định nghĩa field, vì định nghĩa luôn nằm ở nhãn nhánh trong chính văn bản quy chế (xem [`nodes/12`](nodes/12_generation_synthesis_node.md)).
+  **Type A (Calculation) thì khác — có thể khác "Không có" ngay ở lượt đầu.** `CalculationNode` biết thiếu tham số gì TRƯỚC khi `GenerationSynthesisNode` chạy (không cần đợi một vòng hỏi-đáp), nên nó tự ghi `state.pending_clarification` deterministic (không qua `collect_pending_clarification()`) ngay trong cùng lượt xử lý câu hỏi gốc — xem [`nodes/08`](nodes/08_calculation_node.md#6-graph-routing-logic).
+
+  Không còn placeholder `{missing_field_definition}`: `PendingClarification` không lưu định nghĩa field. Với Type B, định nghĩa nằm ở nhãn nhánh trong chính văn bản quy chế (xem [`nodes/12`](nodes/12_generation_synthesis_node.md)); với Type A, không có văn bản nào để đọc — LLM tự diễn đạt câu hỏi trực tiếp từ tên field bằng kiến thức nghiệp vụ phổ thông (GPA/tín chỉ/học phí), nên cũng không cần lưu thêm gì vào state.
 
 > **Khối Nhiệm vụ đối chiếu (`{task_1}`) là chuỗi tĩnh, không cần format ở bước này.** Toàn bộ tri thức học vụ đã nằm trong `<academic_context>` của `{prepared_context}`, nên `task_1` chỉ chứa quy tắc xử lý, không chứa dữ liệu động. Đây là điểm khác biệt so với LISA — hệ đó nạp tri thức theo từng cặp metadata được người dùng chốt dần qua hội thoại nên `task_1` phải có các block con (`confirmation_section`, `information_need_section`) và phải format 2 lớp. KLTN lấy bối cảnh phân quyền trực tiếp từ JWT và truy xuất một khối tri thức duy nhất, nên không có vòng chốt metadata nào để tách block.
 
@@ -120,11 +125,11 @@ base_params = {
     "citation_rules": templates.citation_rules,
     "prepared_context": prepared_context_text,    # Khối con đã được điền thông tin ở Bước 2.1
     "task_1": templates.task_1,                   # Chuỗi tĩnh, không có placeholder
-    "task_2": task_2_text,                        # CHỈ có ở chat_academic_advisory/chat_multi_intent_synthesis — Khối con đã format 2 lớp ở Bước 2.1
+    "task_2": task_2_text,                        # Có ở chat_academic_advisory/chat_multi_intent_synthesis (Type B) VÀ chat_calculation_result (Type A) — Khối con đã format 2 lớp ở Bước 2.1
 }
 ```
 
-> `chat_direct_llm`, `chat_calculation_result`, `chat_ticket_fallback` không có `{task_2}` trong template nên **không cần** đưa key này vào `base_params` khi build cho các luồng đó — `.format(**base_params)` không lỗi nếu dict thừa key không dùng tới, nhưng nên loại bớt cho rõ ràng.
+> **Cập nhật (2026-08)**: `chat_calculation_result` giờ CŨNG cần `{task_2}` trong `base_params` — trước đây nhánh Calculation dùng một node `AskUserClarificationNode` riêng để hỏi lại tham số thiếu, nay đã bỏ, gộp chung cơ chế `task_2`/`ask_user_form_guide` với luồng Advisory (xem [`nodes/08`](nodes/08_calculation_node.md#6-graph-routing-logic)). Chỉ `chat_direct_llm` và `chat_ticket_fallback` là KHÔNG có `{task_2}` trong template — hai luồng này không bao giờ có tham số/thuộc tính nào cần hỏi lại, nên **không cần** đưa key này vào `base_params` khi build cho chúng. `.format(**base_params)` không lỗi nếu dict thừa key không dùng tới, nhưng nên loại bớt cho rõ ràng.
 
 > **Cập nhật gộp flow (2026-08)**: `chat_single_intent.yaml`, `chat_calendar_result.yaml`, `chat_procedure_steps.yaml` đã bị gộp thành 1 file `chat_academic_advisory.yaml` (flow Advisory hợp nhất: advisory/procedure/document/calendar) — xem [`missing_metadata_clarification_design.md`](missing_metadata_clarification_design.md), [`nodes/06_query_transformation_node.md`](nodes/06_query_transformation_node.md).
 >

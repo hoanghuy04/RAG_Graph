@@ -233,7 +233,7 @@ Ví dụ mình có thể giúp bạn:
 
 **Logic**: LLM trích xuất tham số → Python Calculator Tool tính toán → LLM diễn giải kết quả bằng ngôn ngữ tự nhiên.
 
-**Fallback**: Nếu người dùng không cung cấp đủ tham số, hệ thống hỏi lại thay vì tự suy đoán.
+**Fallback**: Nếu người dùng không cung cấp đủ tham số, hệ thống hỏi lại thay vì tự suy đoán — qua cùng cơ chế `task_2.yaml`/`ask_user_form_guide.yaml` dùng cho luồng Advisory, không có node hỏi lại riêng (xem [`08_calculation_node.md`](08_calculation_node.md#6-graph-routing-logic)).
 
 ---
 

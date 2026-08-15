@@ -29,12 +29,15 @@ Hệ thống hỗ trợ 3 loại tính toán:
 ```
 User Query ──► [Bước 1: Parameter Extractor] (agents/calculation_extractor.yaml)
                      │
-                     ├──► Có missing_params? ──► [Hỏi lại User] (Bẻ luồng hỏi phụ)
+                     ├──► Có missing_params? ──► build PendingClarification ──► GenerationSynthesisNode
+                     │                            (deterministic, không LLM)     (hỏi qua {task_2})
                      │
                      └──► Tham số đầy đủ ──► [Bước 2: Python Calculator Tool]
                                                    │
-                                                   └──► Cập nhật State.calculation_result
+                                                   └──► Cập nhật State.calculation_result ──► GenerationSynthesisNode
 ```
+
+> **Cập nhật (2026-08)**: đã bỏ `AskUserClarificationNode` — nhánh thiếu tham số không còn route sang một node hỏi lại riêng. `missing_params` từ `calculation_extractor.yaml` giờ đã đúng shape `fields[]` của `ask_user_form` (`field`/`label`/`options` — xem [`agents/calculation_extractor.yaml`](../prompt_template/agents/calculation_extractor.yaml)), nên CalculationNode chỉ cần đóng gói nguyên vẹn thành `PendingClarification` và route thẳng sang `GenerationSynthesisNode`, dùng chung cơ chế hỏi lại `task_2.yaml`/`ask_user_form_guide.yaml` với luồng Advisory (Type B). Xem thảo luận đầy đủ ở [`missing_metadata_clarification_design.md`](../missing_metadata_clarification_design.md#1-5-hai-loại-field-thiếu-structural-type-a-tĩnh-vs-content-driven-type-b-động).
 
 ---
 
@@ -67,18 +70,46 @@ User Query ──► [Bước 1: Parameter Extractor] (agents/calculation_extrac
 }
 ```
 
+### Output State Update (khi thiếu tham số — không chạy Calculator Tool)
+
+```json
+{
+  "calculation_result": null,
+  "pending_clarification": {
+    "origin_node": "CalculationNode",
+    "pending_sub_query_id": null,
+    "missing_fields": ["credits_registered", "price_per_credit"],
+    "options": [null, null],
+    "retry_count": 0
+  }
+}
+```
+
 ---
 
 ## 6. Graph Routing Logic
 
-Nếu trích xuất đầy đủ tham số:
+Nếu trích xuất đầy đủ tham số, chạy Calculator Tool rồi chuyển sang tổng hợp, bỏ qua RAG:
 
 ```python
-return GenerationSynthesisNode() # Chuyển thẳng sang node tổng hợp, bỏ qua RAG
+return GenerationSynthesisNode()
 ```
 
-Nếu thiếu tham số (`len(missing_params) > 0`):
+Nếu thiếu tham số (`len(missing_params) > 0`), đóng gói thẳng thành `PendingClarification` — bước này **deterministic, không gọi thêm LLM** vì `calculation_extractor.yaml` đã trả `missing_params` đúng shape `field`/`label`/`options`:
 
 ```python
-return AskUserClarificationNode() # Bẻ luồng hỏi bổ sung tham số
+state.pending_clarification = PendingClarification(
+    origin_node="CalculationNode",
+    pending_sub_query_id=None,          # Calculation không đi qua luồng MULTI sub-query
+    missing_fields=[p["field"] for p in missing_params],
+    options=[[o["id"] for o in p["options"]] if p["options"] else None for p in missing_params],
+    retry_count=0,
+)
+return GenerationSynthesisNode()   # hỏi qua {task_2} trong chat_calculation_result.yaml, KHÔNG còn AskUserClarificationNode
 ```
+
+### Resume — lượt sau khi người dùng điền tham số
+
+Clarification Guard ở node 02 xử lý y hệt Type B: `resolve_form()` ghi giá trị vào `state.confirmed_metadata`, xoá `pending_clarification`, rồi route về `origin_node = "CalculationNode"`. Khi CalculationNode chạy lại, nó đọc giá trị vừa chốt từ `confirmed_metadata` theo đúng tên field (VD `confirmed_metadata["credits_registered"]`) để lấp vào `parameters` đã trích được ở lượt đầu, **bỏ qua bước gọi lại `calculation_extractor`** vì tham số đã đủ — rồi chạy thẳng Calculator Tool.
+
+**Lưu ý ranh giới**: tham số tính toán (số tín chỉ, đơn giá, điểm số) đi vào `confirmed_metadata` giống thuộc tính tự khai của Type B, nhưng KHÔNG bao giờ được dùng để chọn nhánh văn bản hay lọt vào `<student_declared_attributes>` một cách gây nhiễu — hệ thống chỉ đọc lại đúng tên field CalculationNode cần, không đọc toàn bộ dict.

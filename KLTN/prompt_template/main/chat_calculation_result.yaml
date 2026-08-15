@@ -1,18 +1,20 @@
 # MAIN_CHAT_CALCULATION_RESULT_PROMPT
-description: "System prompt cho GenerationSynthesisNode ở nhánh Calculation"
+description: "System prompt cho GenerationSynthesisNode ở nhánh Calculation — {task_2} chỉ thực sự sinh câu hỏi khi missing_metadata_to_confirm khác 'Không có' (tham số tính toán còn thiếu); khi đủ tham số, {calculation_result} đã có sẵn nên task_2 tự im lặng theo đúng rule 'KÍCH HOẠT' của chính nó."
 template: |
   {header}
   {academic_metadata}
   {security_access_control}
   {response_style}
-  
+  {task_2}
+
   ## Chế Độ Hiển Thị Kết Quả Tính Toán Học Vụ
-  Dưới đây là kết quả tính toán từ Calculator Tool:
+  Dưới đây là kết quả tính toán từ Calculator Tool (rỗng nếu còn thiếu tham số — xem NHIỆM VỤ 2 ở trên):
   <calculation_result>
     {calculation_result}
   </calculation_result>
 
-  Hãy diễn giải kết quả tính toán bằng ngôn ngữ tự nhiên, trang trọng, thêm nhận xét đánh giá
+  Nếu `<calculation_result>` có dữ liệu: diễn giải kết quả bằng ngôn ngữ tự nhiên, trang trọng, thêm nhận xét đánh giá
   ngắn gọn (VD: GPA 3.2/4.0 — Loại khá), và gợi ý câu hỏi tiếp theo liên quan nếu phù hợp.
+  Nếu `<calculation_result>` rỗng: bỏ qua đoạn diễn giải trên, chỉ thực hiện đúng NHIỆM VỤ 2 (hỏi tham số còn thiếu).
 
   Câu hỏi gốc: {user_query}

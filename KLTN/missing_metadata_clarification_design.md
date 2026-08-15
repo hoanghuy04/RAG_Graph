@@ -5,7 +5,7 @@
 
 ## 1. Bối Cảnh & Vấn Đề
 
-Graph KLTN hiện có **13 node** (xem [`nodes/kltn_graph_overview.md`](nodes/kltn_graph_overview.md)). Trong số các flow cần tham số đầu vào cụ thể để hoàn thành tác vụ, chỉ **`CalculationNode` (08)** có cơ chế phát hiện + hỏi lại tường minh khi thiếu tham số:
+Graph KLTN hiện có **13 node** (xem [`nodes/kltn_graph_overview.md`](nodes/kltn_graph_overview.md)). Trong số các flow cần tham số đầu vào cụ thể để hoàn thành tác vụ, chỉ **`CalculationNode` (08)** có cơ chế phát hiện + hỏi lại tường minh khi thiếu tham số. **(Lịch sử — trạng thái trước khi hợp nhất 2026-08, xem Mục 1.5):**
 
 ```
 CalculationNode → missing_params → AskUserClarificationNode
@@ -33,8 +33,11 @@ Dự án `lisa-ai-agent` đã có sẵn cơ chế tương đương cho miền vi
 | Thời điểm phát hiện | TRƯỚC khi truy vấn — ngay khi node parse xong `user_query` (chưa cần RAG) | SAU khi RAG trả `<academic_context>` — chỉ LLM tổng hợp câu trả lời (node 12) mới thấy được văn bản chia nhánh theo thuộc tính gì |
 | Cơ chế | `missing_params` do chính node đó tính ra, giống hệt mô hình lisa (registry cố định, ví dụ đã có sẵn ở `calculation_extractor.yaml`) | Rule mới trong `task_1.yaml` ("PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN") — LLM tại node 12 tự đặt tên field + tự trích option từ nhãn nhánh trong chính văn bản, KHÔNG tra registry nào |
 | File prompt liên quan | `agents/calculation_extractor.yaml`, `agents/academic_comparison.yaml` (đã có output schema) | `common/task_1.yaml` (rule phát hiện) + `common/task_2.yaml` + `common/ask_user_form_guide.yaml` (file thật, đã tạo — xem Mục 6-7) |
+| Node hỏi lại | **Đã hợp nhất (2026-08).** `CalculationNode` (08) không còn route sang một node hỏi lại riêng — nó đóng gói `missing_params` (đã đúng shape `field`/`label`/`options`) thành `PendingClarification` rồi route thẳng sang `GenerationSynthesisNode`, dùng chung `task_2.yaml`/`ask_user_form_guide.yaml` với Type B. `AcademicComparisonNode` (07) **CHƯA** làm theo mô hình này — hiện chưa kiểm tra `len(entities) < 2` trước khi retrieval (vẫn là việc tồn đọng, xem Mục 9) | `GenerationSynthesisNode` (12) — không đổi |
 
 Vì Type B không thể liệt kê trước, Mục 3 dưới đây **không phải một checklist bắt buộc kiểm tra hết** cho Advisory/Procedure/Document/Calendar — chỉ là các VÍ DỤ minh hoạ loại thuộc tính hay gặp, để chứng minh vấn đề tồn tại, không phải danh sách field cần code cứng vào node 06.
+
+> **Cập nhật hội tụ Type A/B (2026-08)**: bảng trên mô tả **nguồn phát hiện** field (khác nhau thật sự giữa hai loại — Type A biết trước, Type B chỉ lộ ra sau RAG), nhưng **nơi hỏi lại** giờ dùng chung một cơ chế cho cả CalculationNode lẫn Advisory: cùng `PendingClarification`, cùng `task_2.yaml`/`ask_user_form_guide.yaml`, cùng route qua `GenerationSynthesisNode`, cùng Clarification Guard ở node 02 để resume. `AskUserClarificationNode` — vốn được nhắc tới xuyên suốt tài liệu này như node hỏi lại riêng của Type A — **không còn tồn tại**; mọi tham chiếu cũ tới nó trong tài liệu này chỉ còn giá trị lịch sử (mô tả trạng thái TRƯỚC khi hợp nhất). Lý do hợp nhất và đánh đổi chi phí (một lượt hỏi giờ phải đi qua `GenerationSynthesisNode` — vốn là node tổng hợp cuối, thay vì một node nhẹ chuyên biệt) xem [`nodes/08_calculation_node.md`](nodes/08_calculation_node.md#6-graph-routing-logic).
 
 ---
 
@@ -59,7 +62,7 @@ Khác với `lisa-ai-agent` (người dùng visa chưa có tài khoản → **m�
 
 | # | Node | Type | Field | Nguồn ưu tiên | Nếu thiếu, ảnh hưởng gì | Có cơ chế hỏi lại hiện tại? |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 08 | `CalculationNode` | A (tĩnh) | `calculation_type`, `courses[]`/`credits_registered`/`price_per_credit` tuỳ loại | Query | Không tính được số liệu | ✅ Có — `missing_params` → `AskUserClarificationNode` |
+| 08 | `CalculationNode` | A (tĩnh) | `calculation_type`, `courses[]`/`credits_registered`/`price_per_credit` tuỳ loại | Query | Không tính được số liệu | ✅ Có — `missing_params` (đã kèm `label`/`options`) → `PendingClarification` → `GenerationSynthesisNode` + `task_2.yaml` (2026-08: gộp chung với Type B, không còn `AskUserClarificationNode`) |
 | 08 | `CalculationNode` | A (tĩnh) | `program` | Profile → fallback Query | Sai đơn giá tín chỉ nếu suy nhầm ngành | ⚠️ Có schema (`parameters.program`) nhưng chưa ghi rõ có default từ profile hay không |
 | 07 | `AcademicComparisonNode` | A (tĩnh) | `entities[]` (bắt buộc ≥ 2) | Query, vế đầu có thể default = `program` suy ra từ `organization_scopes` | Chỉ so sánh được 1 vế → sub-query fan-out vô nghĩa | ❌ Không có — route thẳng `RetrievalFilteringNode()` dù `len(entities) < 2` |
 | 07 | `AcademicComparisonNode` | A (tĩnh) | `comparison_criteria[]` | Query | Không rõ so sánh theo tiêu chí gì (học phí/tín chỉ/GPA) → sub-query mơ hồ | ❌ Không có |
@@ -161,7 +164,7 @@ Routing guard ở node 02 (mục 5, [nodes/02_security_context_extraction_node.m
 | [`prompt_template/common/task_2.yaml`](prompt_template/common/task_2.yaml) | Đặt đúng 1 câu hỏi cuối cùng — nhận field từ 1 trong 2 nguồn: `<missing_metadata_to_confirm>` (Type A, node trước truyền vào) HOẶC tự phát hiện ở NHIỆM VỤ 1 (Type B) | Thêm hẳn 1 đoạn phân biệt 2 nguồn field ngay đầu file — bản gốc lisa chỉ có 1 nguồn (registry) |
 | [`prompt_template/common/ask_user_form_guide.yaml`](prompt_template/common/ask_user_form_guide.yaml) | Quy tắc sinh JSON `ask_user_form` | Với Type B, `options.id` phải copy nguyên văn nhãn nhánh **trong chính văn bản vừa đọc**, không phải từ registry — có ví dụ minh hoạ riêng cho case này |
 
-Cả 2 file `task_2` và `ask_user_form_guide` đã được wire vào `{task_2}` trong [`main/chat_academic_advisory.yaml`](prompt_template/main/chat_academic_advisory.yaml) và [`main/chat_multi_intent_synthesis.yaml`](prompt_template/main/chat_multi_intent_synthesis.yaml) — 2 template RAG duy nhất có khả năng gặp Type B (Calculation/Comparison dùng `AskUserClarificationNode` riêng cho Type A, không qua 2 file này).
+Cả 2 file `task_2` và `ask_user_form_guide` đã được wire vào `{task_2}` trong [`main/chat_academic_advisory.yaml`](prompt_template/main/chat_academic_advisory.yaml), [`main/chat_multi_intent_synthesis.yaml`](prompt_template/main/chat_multi_intent_synthesis.yaml) (Type B), **và** [`main/chat_calculation_result.yaml`](prompt_template/main/chat_calculation_result.yaml) (Type A — cập nhật 2026-08, gộp chung, không còn `AskUserClarificationNode` riêng). `AcademicComparisonNode` (07) là Type A duy nhất còn lại chưa có cơ chế hỏi lại nào (kể cả cũ lẫn mới) — `len(entities) < 2` hiện chưa được kiểm tra ở đâu cả, xem Mục 9.
 
 ---
 
@@ -282,5 +285,6 @@ pending_clarification = None  # node 02 dọn state, tránh kẹt vòng lặp
 - [x] Bổ sung tiêu chí phân định **CÁCH 1 (trả lời phân nhánh bằng bảng)** vs **CÁCH 2 (hỏi lại)** vào `task_1.yaml`, kèm bố cục bảng ở `response_style.yaml` mục 4. CÁCH 1 là mặc định khi 2-4 nhánh cùng bộ tiêu chí và thuộc tính là thứ sinh viên tự biết — hỏi lại lúc đó chỉ tốn một lượt mà không thu được thông tin gì mới.
 - [ ] Kiểm tra node 10 (`RetrievalFilteringNode`) **không** đọc `confirmed_metadata` khi build Qdrant payload filter — hiện chưa có ràng buộc nào chặn ở tầng code.
 - [ ] Cập nhật ví dụ GDQP ở Mục 8: 3 nhánh cùng tiêu chí "được miễn hay không" nên theo rule mới nó thuộc **CÁCH 1** (bảng), không còn minh hoạ đúng đường hỏi lại — nên đổi sang một case không dựng được bảng, như ví dụ miễn giảm học phí trong [`design/overview_flow.html`](design/overview_flow.html).
-- [ ] Cho `AcademicComparisonNode` (07) kiểm tra `len(entities) < 2` trước khi route sang `RetrievalFilteringNode()`, ghi `missing_params` giống mô hình `CalculationNode` (Type A) — hiện chưa có, đã nêu ở Mục 3.
-- [ ] Bổ sung node mới `AskUserClarificationNode` vào sơ đồ Mermaid tổng ([`nodes/kltn_graph_overview.md`](nodes/kltn_graph_overview.md)) cho nhánh Type A (Calculation/Comparison) — Type B (Advisory) không cần node riêng, xử lý ngay trong `GenerationSynthesisNode`/`task_2.yaml`.
+- [x] **Gộp cơ chế hỏi lại của `CalculationNode` (Type A) vào `task_2.yaml`, bỏ `AskUserClarificationNode` (2026-08)**: `calculation_extractor.yaml` nay trả `missing_params` đúng shape `field`/`label`/`options` của `ask_user_form`; `CalculationNode` đóng gói thẳng thành `PendingClarification` (deterministic, không LLM) và route sang `GenerationSynthesisNode`; `chat_calculation_result.yaml` đã có `{task_2}`; gate của `task_2.yaml` được tách khỏi cụm từ "NHIỆM VỤ 1 chọn CÁCH 2" (không áp dụng cho luồng Calculation, vốn không có NHIỆM VỤ 1) sang điều kiện chung "`<missing_metadata_to_confirm>` khác 'Không có'". Xem [`nodes/08_calculation_node.md`](nodes/08_calculation_node.md#6-graph-routing-logic) và [`detail_prompt_template_loader.md`](detail_prompt_template_loader.md).
+- [ ] Cho `AcademicComparisonNode` (07) kiểm tra `len(entities) < 2` trước khi route sang `RetrievalFilteringNode()`, ghi `missing_params` giống mô hình `CalculationNode` (Type A) — hiện chưa có, đã nêu ở Mục 3. **Khi làm, tái dùng đúng cơ chế vừa gộp cho Calculation** (đóng gói `PendingClarification` deterministic → route sang `GenerationSynthesisNode` → `task_2.yaml`), KHÔNG dựng một node hỏi lại riêng — mục dưới đây (từng đề xuất một node Mermaid mới) đã lỗi thời và bị thay bằng dòng này.
+- ~~Bổ sung node mới `AskUserClarificationNode` vào sơ đồ Mermaid tổng cho nhánh Type A~~ — **đã lỗi thời (2026-08)**: quyết định mới là KHÔNG tạo node riêng cho Type A, gộp thẳng vào `GenerationSynthesisNode`/`task_2.yaml` giống Type B. Không cần thêm node nào vào [`nodes/kltn_graph_overview.md`](nodes/kltn_graph_overview.md).
