@@ -1,0 +1,918 @@
+<title>Vòng Hỏi Lại Thuộc Tính</title>
+
+<style>
+  /* ── Tokens: light là bảng màu đầy đủ ─────────────────────────── */
+  :root {
+    --ground:      #EDEFEE;
+    --surface:     #FAFBFA;
+    --surface-2:   #F1F3F1;
+    --ink:         #12181A;
+    --ink-soft:    #4C5A5B;
+    --ink-faint:   #7E8C8B;
+    --rule:        #D2D8D5;
+    --rule-soft:   #E2E7E4;
+
+    --verified:      #14655A;   /* JWT — đã xác minh, có thẩm quyền */
+    --verified-bg:   #DCEAE6;
+    --declared:      #A8501A;   /* Tự khai — chưa xác minh */
+    --declared-bg:   #F3E4D7;
+    --alert:         #9B2226;
+
+    --code-bg:     #E9EDEB;
+    --code-ink:    #1B2426;
+
+    --shadow: 0 1px 0 rgba(18,24,26,.04), 0 8px 24px -18px rgba(18,24,26,.5);
+
+    --serif: Cambria, Constantia, "Noto Serif", Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", Roboto, "Helvetica Neue", system-ui, -apple-system, sans-serif;
+    --mono: "Cascadia Mono", Consolas, "SF Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #0E1314;
+      --surface:   #151B1C;
+      --surface-2: #1B2323;
+      --ink:       #E6EBE9;
+      --ink-soft:  #A3B0AE;
+      --ink-faint: #75817F;
+      --rule:      #2C3736;
+      --rule-soft: #212B2B;
+
+      --verified:    #5FC9B4;
+      --verified-bg: #10322D;
+      --declared:    #E1954F;
+      --declared-bg: #35240F;
+      --alert:       #F08A80;
+
+      --code-bg:   #101718;
+      --code-ink:  #D5DEDB;
+
+      --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 28px -20px #000;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:    #0E1314;
+    --surface:   #151B1C;
+    --surface-2: #1B2323;
+    --ink:       #E6EBE9;
+    --ink-soft:  #A3B0AE;
+    --ink-faint: #75817F;
+    --rule:      #2C3736;
+    --rule-soft: #212B2B;
+
+    --verified:    #5FC9B4;
+    --verified-bg: #10322D;
+    --declared:    #E1954F;
+    --declared-bg: #35240F;
+    --alert:       #F08A80;
+
+    --code-bg:   #101718;
+    --code-ink:  #D5DEDB;
+
+    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 28px -20px #000;
+  }
+
+  /* ── Nền & khung ──────────────────────────────────────────────── */
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16.5px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 20px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  /* ── Mở đầu ───────────────────────────────────────────────────── */
+  .masthead {
+    display: grid;
+    gap: 18px;
+    padding: 72px 0 34px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: clamp(34px, 5.2vw, 54px);
+    line-height: 1.06;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0;
+    max-width: 20ch;
+  }
+  .standfirst {
+    font-size: 18.5px;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+
+  /* ── Chú giải hai nguồn ───────────────────────────────────────── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    padding: 18px 0 0;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+  .sw-v { background: var(--verified); }
+  .sw-d { background: var(--declared); }
+
+  /* ── Đường ray các bước ───────────────────────────────────────── */
+  .track { display: grid; gap: 0; margin-top: 8px; }
+
+  .step {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 0 26px;
+    padding: 40px 0 8px;
+    position: relative;
+  }
+  .step::before {          /* đường nối dọc = mạch graph */
+    content: "";
+    position: absolute;
+    left: 25px; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--rule);
+  }
+  .step:first-of-type::before { top: 46px; }
+  .step:last-of-type::before  { bottom: auto; height: 46px; }
+
+  .marker {
+    position: relative;
+    z-index: 1;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--surface);
+    border: 2px solid var(--ink);
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    margin-top: 20px;
+  }
+  .step[data-lane="turn2"] .marker { border-color: var(--declared); color: var(--declared); }
+
+  .step-body { display: grid; gap: 16px; min-width: 0; padding-bottom: 22px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(23px, 2.6vw, 30px);
+    line-height: 1.16;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: -6px 0 0;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    margin: 6px 0 -6px;
+  }
+  p { margin: 0; max-width: 68ch; }
+  .step-body > p, .step-body > ul { color: var(--ink-soft); }
+  .step-body > p strong, li strong { color: var(--ink); font-weight: 600; }
+
+  ul { margin: 0; padding-left: 20px; display: grid; gap: 7px; max-width: 68ch; }
+  li::marker { color: var(--ink-faint); }
+
+  /* ── Mã & định danh ───────────────────────────────────────────── */
+  code {
+    font-family: var(--mono);
+    font-size: .875em;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: .12em .38em;
+    border-radius: 3px;
+    word-break: break-word;
+  }
+  pre {
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 13.2px;
+    line-height: 1.65;
+    color: var(--code-ink);
+    white-space: pre;
+    word-break: normal;
+  }
+  pre.verified  { border-left-color: var(--verified); }
+  pre.declared  { border-left-color: var(--declared); }
+
+  .caption {
+    font-size: 13.5px;
+    color: var(--ink-faint);
+    max-width: 66ch;
+    margin: -6px 0 0;
+  }
+
+  /* ── Thẻ ghi chú ──────────────────────────────────────────────── */
+  .note {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--ink-faint);
+    border-radius: 4px;
+    background: var(--surface-2);
+    padding: 15px 18px;
+    display: grid;
+    gap: 8px;
+    max-width: 74ch;
+  }
+  .note p { max-width: none; color: var(--ink-soft); font-size: 15.2px; }
+  .note-title {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0;
+  }
+  .note.security { border-left-color: var(--alert); background: var(--surface); }
+  .note.security .note-title { color: var(--alert); }
+  .note.declared { border-left-color: var(--declared); background: var(--declared-bg); }
+  .note.declared .note-title { color: var(--declared); }
+  .note.verified { border-left-color: var(--verified); background: var(--verified-bg); }
+  .note.verified .note-title { color: var(--verified); }
+
+  /* ── Nhãn trạng thái ──────────────────────────────────────────── */
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .06em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    vertical-align: 1px;
+    white-space: nowrap;
+  }
+  .tag-v { background: var(--verified-bg); color: var(--verified); }
+  .tag-d { background: var(--declared-bg); color: var(--declared); }
+
+  /* ── Bảng ─────────────────────────────────────────────────────── */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+    font-size: 14.6px;
+    background: var(--surface);
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    border-bottom: 1px solid var(--rule);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 600; color: var(--ink); }
+
+  /* ── Dải phân lượt ────────────────────────────────────────────── */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 46px 0 -12px;
+    padding-left: 102px;
+  }
+  .divider-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--declared);
+    white-space: nowrap;
+  }
+  .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  /* ── Kết ──────────────────────────────────────────────────────── */
+  .closer {
+    margin-top: 64px;
+    padding-top: 34px;
+    border-top: 2px solid var(--ink);
+    display: grid;
+    gap: 20px;
+  }
+  .invariants { display: grid; gap: 12px; }
+  .inv {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px;
+    align-items: baseline;
+    padding: 13px 16px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    font-size: 15.2px;
+    color: var(--ink-soft);
+  }
+  .inv b { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); letter-spacing: .06em; }
+  .inv span strong { color: var(--ink); font-weight: 600; }
+
+  .colophon {
+    font-size: 13.5px;
+    color: var(--ink-faint);
+    max-width: 70ch;
+  }
+
+  a { color: var(--verified); text-underline-offset: 3px; }
+  a:focus-visible, :focus-visible { outline: 2px solid var(--declared); outline-offset: 3px; }
+
+  @media (max-width: 720px) {
+    .step { grid-template-columns: 44px minmax(0, 1fr); gap: 0 16px; }
+    .step::before { left: 15px; }
+    .marker { width: 32px; height: 32px; font-size: 12.5px; margin-top: 24px; }
+    .divider { padding-left: 60px; }
+    body { font-size: 16px; padding: 0 16px 72px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">KLTN · RAG Graph · Type B — Content-Driven Missing Metadata</p>
+    <h1>Vòng Hỏi Lại Thuộc Tính</h1>
+    <p class="standfirst">
+      Khi văn bản quy chế chia nhánh theo một thuộc tính của sinh viên mà JWT không có và câu hỏi
+      không nói, hệ thống phải <strong>hỏi lại đúng một lần, đúng tên field, rồi truy xuất lại</strong>.
+      Trang này lần theo toàn bộ đường đi đó — từ lúc giải mã token, qua chỗ LLM tự phát hiện nhánh,
+      tới lúc field còn treo được nạp ngược vào <code>&lt;missing_metadata_to_confirm&gt;</code> ở lượt sau.
+    </p>
+    <div class="legend">
+      <span><i class="swatch sw-v"></i> Dữ liệu từ JWT — đã xác minh, được phép phân quyền</span>
+      <span><i class="swatch sw-d"></i> Dữ liệu sinh viên tự khai — chỉ được dùng để chọn nhánh trả lời</span>
+    </div>
+  </header>
+
+  <div class="track">
+
+    <!-- ─────────────────────────────────────────────── 00 -->
+    <section class="step">
+      <div class="marker">00</div>
+      <div class="step-body">
+        <p class="eyebrow">Tiền đề</p>
+        <h2>Vì sao không thể có một danh sách field cố định</h2>
+        <p>
+          Hệ thống có hai loại thuộc tính thiếu, và chúng cần hai cơ chế khác hẳn nhau. Nhầm hai loại này
+          là lý do bản thiết kế đầu tiên bị viết sai — nó bê nguyên mô hình registry tĩnh của một miền đóng
+          (visa) sang một hệ RAG mở trên toàn bộ kho quy chế.
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th></th><th>Type A — Structural</th><th>Type B — Content-Driven</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Node</td>
+                <td><code>CalculationNode</code> (08), <code>AcademicComparisonNode</code> (07)</td>
+                <td><code>QueryTransformationNode</code> (06) → advisory / procedure / document / calendar</td>
+              </tr>
+              <tr>
+                <td>Biết trước field?</td>
+                <td>Có — cố định theo output schema của node</td>
+                <td>Không — phụ thuộc chủ đề quy chế mà câu hỏi chạm tới</td>
+              </tr>
+              <tr>
+                <td>Phát hiện lúc nào</td>
+                <td>Trước truy vấn, ngay khi parse xong <code>user_query</code></td>
+                <td>Sau RAG — chỉ khi LLM đọc <code>&lt;academic_context&gt;</code> mới thấy văn bản chia nhánh theo gì</td>
+              </tr>
+              <tr>
+                <td>Đường xử lý</td>
+                <td><code>missing_params</code> → <code>AskUserClarificationNode</code></td>
+                <td>Rule trong <code>task_1.yaml</code> → <code>task_2.yaml</code> → JSON <code>ask_user_form</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption">
+          Toàn bộ trang này nói về <strong>Type B</strong>. Type A không đi qua <code>task_2.yaml</code> —
+          nó có node hỏi lại riêng.
+        </p>
+      </div>
+    </section>
+
+    <div class="divider"><span class="divider-label">Lượt 1 — câu hỏi đầu tiên</span></div>
+
+    <!-- ─────────────────────────────────────────────── 01 -->
+    <section class="step">
+      <div class="marker">01</div>
+      <div class="step-body">
+        <p class="eyebrow">Node 02 · SecurityContextExtractionNode</p>
+        <h2>Giải mã JWT thành bối cảnh phân quyền</h2>
+        <p>
+          Node deterministic, không gọi LLM. Nó giải mã token và dựng <code>academic_security_context</code> —
+          nguồn thuộc tính <span class="tag tag-v">miễn phí</span>, không bao giờ phải hỏi lại.
+        </p>
+        <pre class="verified"><code>class AcademicSecurityContext(BaseModel):
+    user_id: str | None              # None với khách vãng lai
+    role: Literal["KHACH", "SINH_VIEN", "GIANG_VIEN", "CAN_BO_PHONG_BAN", "ADMIN"]
+    organization_scopes: list[str]   # ["KHOA_CNTT", "GLOBAL"]
+    max_access_level: int            # 1..5
+    student_program: str | None
+    faculty_code: str | None</code></pre>
+        <h3>Suy ra thay vì hỏi</h3>
+        <p>
+          <code>program</code> không cần hỏi và cũng không cần field riêng: phần tử hẹp nhất trong
+          <code>organization_scopes</code> (khác <code>GLOBAL</code>) đã xác định đơn vị của sinh viên, chỉ cần
+          một bảng tra <code>mã_khoa → tên_ngành</code>. Đây là quy tắc cứng của cả cơ chế —
+          <strong>field nào có trong profile thì tuyệt đối không đưa vào diện hỏi lại</strong>.
+        </p>
+        <h3>Không có token thì không lỗi</h3>
+        <pre class="verified"><code>GUEST_CONTEXT = AcademicSecurityContext(
+    user_id=None, role="KHACH",
+    organization_scopes=["GLOBAL"],   # chỉ văn bản công khai toàn trường
+    max_access_level=1,
+    student_program=None, faculty_code=None,
+)</code></pre>
+        <p>
+          Khách vãng lai là ca đáng thiết kế riêng, không phải biến thể nhỏ: hồ sơ trống hoàn toàn nên một câu hỏi
+          tưởng đơn giản — <em>"GPA 3.6 có được học bổng không?"</em> — đụng ngay 3–4 thuộc tính chưa biết cùng lúc.
+          Chính ca này buộc form phải mang <strong>nhiều field</strong> thay vì một field lẻ.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 02 -->
+    <section class="step">
+      <div class="marker">02</div>
+      <div class="step-body">
+        <p class="eyebrow">Prompt Loader · Pha 2, bước 2.1</p>
+        <h2>Hai nguồn thuộc tính, hai thẻ XML không được lẫn</h2>
+        <p>
+          Loader format khối <code>academic_metadata</code> từ state. Hai nguồn đi vào cùng một khối nhưng
+          <strong>hai thẻ tên khác hẳn nhau</strong>, để LLM không bao giờ nhầm cái đã xác minh với cái tự khai.
+        </p>
+        <pre><code>metadata_text = templates.academic_metadata.format(
+    user_id=state.security_context.user_id,
+    role=state.security_context.role,
+    organization_scopes=state.security_context.organization_scopes,
+    max_access_level=state.security_context.max_access_level,
+    confirmed_metadata=_render_declared_attributes(state.confirmed_metadata),
+)
+
+def _render_declared_attributes(confirmed: dict[str, str]) -> str:
+    if not confirmed:
+        return "Chưa có thuộc tính nào được sinh viên xác nhận."
+    return "\n".join(f"    - {field}: {value}" for field, value in confirmed.items())</code></pre>
+        <p class="caption">
+          Không bao giờ trả chuỗi rỗng — một thẻ XML trống dễ bị LLM đọc thành lỗi nạp dữ liệu.
+        </p>
+        <pre class="declared"><code>&lt;academic_user_context&gt;          &lt;!-- JWT, đã xác minh --&gt;
+  - Mã người dùng: SV20248899
+  - Vai trò (Role): SINH_VIEN
+  - Đơn vị / Khoa chuyên môn (Scopes): ['KHOA_CNTT', 'GLOBAL']
+  - Cấp độ truy cập bảo mật tối đa: 2
+&lt;/academic_user_context&gt;
+
+&lt;student_declared_attributes&gt;    &lt;!-- tự khai, CHƯA xác minh --&gt;
+  Chưa có thuộc tính nào được sinh viên xác nhận.
+&lt;/student_declared_attributes&gt;</code></pre>
+        <div class="note security">
+          <p class="note-title">Ranh giới cứng</p>
+          <p>
+            <code>confirmed_metadata</code> tuyệt đối không được đưa vào Qdrant payload filter ở node 10.
+            Nếu lẫn, sinh viên chỉ cần khai <em>"em là học viên cao học"</em> là đọc được văn bản ngoài quyền.
+            Quyền truy cập chỉ đến từ <code>&lt;academic_user_context&gt;</code>; thuộc tính tự khai chỉ dùng để
+            <strong>chọn nhánh trả lời</strong>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 03 -->
+    <section class="step">
+      <div class="marker">03</div>
+      <div class="step-body">
+        <p class="eyebrow">Prompt Loader · <code>task_2.yaml</code>, format 2 lớp</p>
+        <h2>Ở lượt đầu, ô này luôn là "Không có" — và đó là đúng</h2>
+        <p>
+          <code>task_2.yaml</code> có một placeholder dữ liệu (<code>{missing_metadata_to_confirm}</code>) và nhúng
+          lồng một khối tĩnh (<code>{ask_user_form_guide}</code>), nên phải format hai lớp. Nguồn <em>duy nhất</em>
+          của placeholder dữ liệu là <code>state.pending_clarification</code>.
+        </p>
+        <pre><code>pending = state.pending_clarification
+if pending is not None:
+    missing_metadata_text = json.dumps({
+        "type": "ask_user_form",
+        "fields": [
+            {"field": field,
+             "options": [{"id": o, "label": o} for o in opts] if opts else None}
+            for field, opts in zip(pending.missing_fields, pending.options)
+        ],
+    }, ensure_ascii=False)
+else:
+    missing_metadata_text = "Không có"
+
+task_2_text = templates.task_2.format(
+    missing_metadata_to_confirm=missing_metadata_text,
+    ask_user_form_guide=templates.ask_user_form_guide,   # chuỗi tĩnh
+)</code></pre>
+        <div class="note">
+          <p class="note-title">Vì sao lượt đầu bắt buộc là "Không có"</p>
+          <p>
+            Field Type B chỉ lộ ra khi LLM đọc <code>&lt;academic_context&gt;</code> — tức là <strong>sau</strong> khi
+            prompt đã đóng băng. LLM không thể ghi ngược vào input của chính nó; nó ghi nhận phát hiện bằng khối
+            JSON trong <em>output</em>. Placeholder này chỉ khác "Không có" từ lượt kế tiếp, và chỉ khi người dùng
+            bỏ trống hoặc điền không khớp một phần form.
+          </p>
+        </div>
+        <p class="caption">
+          <code>{task_1}</code> ngược lại là chuỗi tĩnh hoàn toàn, không format ở bước này — nó chỉ chứa quy tắc
+          xử lý, còn tri thức đã nằm trong <code>{prepared_context}</code>. Thiếu bất kỳ placeholder nào ở trên là
+          <code>KeyError</code> làm hỏng cả lượt hội thoại.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 04 -->
+    <section class="step">
+      <div class="marker">04</div>
+      <div class="step-body">
+        <p class="eyebrow">Node 06 → 10 → 11</p>
+        <h2>Truy xuất khi còn chưa biết mình thiếu gì</h2>
+        <p>
+          Node 06 sinh HyDE doc từ câu hỏi gốc và <strong>không có gì để kiểm tra trước</strong> — tại thời điểm này
+          chưa ai biết chủ đề sẽ phân nhánh theo thuộc tính nào. Node 10 lọc theo <code>organization_scopes</code>,
+          node 11 rerank và chỉ cho qua khi <code>rerank_score ≥ 0.70</code>.
+        </p>
+        <pre><code>filtered_context_chunks = [
+  "Điều 8: Sinh viên hệ CHÍNH QUY được miễn học phần GDQP nếu đã hoàn thành
+   chương trình GDQP tại bậc THPT có xác nhận... [1]
+   Sinh viên hệ LIÊN THÔNG và VLVH không thuộc diện áp dụng điều khoản
+   miễn giảm này, phải học đầy đủ học phần. [1]"
+]</code></pre>
+        <p>
+          Văn bản vừa về đã chia hai nhánh theo <strong>hệ đào tạo</strong> — một thuộc tính không có trong JWT,
+          không có trong câu hỏi, và chưa từng được khai. Đến đây mới có đủ dữ kiện để biết là đang thiếu.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 05 -->
+    <section class="step">
+      <div class="marker">05</div>
+      <div class="step-body">
+        <p class="eyebrow">Node 12 · <code>task_1.yaml</code> — điểm phát hiện</p>
+        <h2>Ba nguồn phải cùng im lặng thì mới gọi là thiếu</h2>
+        <p>
+          Rule <em>"PHÁT HIỆN NHÁNH PHỤ THUỘC THUỘC TÍNH SINH VIÊN"</em> buộc LLM kiểm đủ ba nguồn trước khi
+          kết luận. Hỏi lại một thuộc tính đã có trong <code>&lt;student_declared_attributes&gt;</code> là lỗi
+          nghiêm trọng — sinh viên đã trả lời rồi.
+        </p>
+        <ul>
+          <li><code>&lt;academic_user_context&gt;</code> — thông tin đã xác minh từ JWT</li>
+          <li><code>&lt;student_declared_attributes&gt;</code> — thuộc tính đã tự khai ở các lượt trước</li>
+          <li>Chính câu hỏi của lượt này</li>
+        </ul>
+        <h3>Thiếu rồi thì vẫn chưa chắc được hỏi</h3>
+        <p>
+          Phát hiện thiếu <em>không</em> tự động dẫn tới câu hỏi. Mặc định là trả lời phân nhánh; hỏi lại là
+          đường dự phòng khi bảng không dựng được.
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Tiêu chí</th><th>CÁCH 1 — trả lời phân nhánh</th><th>CÁCH 2 — hỏi lại</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Số nhánh</td><td>2–4</td><td>≥ 5 — bảng quá dài, sinh viên phải tự dò</td></tr>
+              <tr><td>Tiêu chí giữa các nhánh</td><td>Chung một bộ, xếp được bảng có cột chung</td><td>Mỗi nhánh một quy trình / bộ hồ sơ khác hẳn — ép thành bảng ra ma trận rỗng</td></tr>
+              <tr><td>Thuộc tính phân nhánh</td><td>Sinh viên đương nhiên biết (hệ, khóa, ngành, bậc)</td><td>Sinh viên không tự biết (diện chính sách, diện ưu tiên, tình trạng hồ sơ đã duyệt)</td></tr>
+              <tr><td>Kết quả</td><td>Bảng so sánh đầy đủ, <strong>không</strong> sinh JSON</td><td>Chuyển sang NHIỆM VỤ 2</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption">
+          Lý do CÁCH 1 là mặc định: sinh viên biết rõ mình thuộc nhánh nào, nên hỏi lại chỉ tốn thêm một lượt
+          mà không thu được thông tin gì họ chưa biết. Nhiều thuộc tính cùng thiếu thì thử CÁCH 1 nhiều chiều
+          trước — đếm số <strong>tổ hợp văn bản thực sự quy định</strong> (không phải tích số lựa chọn, ma trận
+          thường thưa); ≤ 6 tổ hợp thì vẫn dựng bảng.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 06 -->
+    <section class="step">
+      <div class="marker">06</div>
+      <div class="step-body">
+        <p class="eyebrow">Node 12 · <code>task_2.yaml</code> + <code>ask_user_form_guide.yaml</code></p>
+        <h2>Một câu hỏi ở cuối, một khối JSON, không gì khác</h2>
+        <p>
+          NHIỆM VỤ 2 chỉ chạy khi NHIỆM VỤ 1 đã chọn CÁCH 2. Nó nhận field từ một trong hai nguồn — khối
+          <code>&lt;missing_metadata_to_confirm&gt;</code> (lượt sau), hoặc chính phát hiện vừa rồi (lượt này) —
+          rồi sinh phản hồi có đúng một câu hỏi kết thúc bằng <code>?</code>, đặt ngay trước JSON.
+        </p>
+        <pre class="declared"><code>Về việc miễn học phần Giáo dục Quốc phòng, quy định miễn giảm hiện khác nhau
+tuỳ theo hệ đào tạo sinh viên đang theo học [1].
+
+Bạn đang học theo hệ đào tạo nào ạ?
+
+```json
+{"type": "ask_user_form", "fields": [
+  {"field": "he_dao_tao", "label": "Hệ đào tạo", "options": [
+    {"id": "chinh_quy", "label": "Chính quy"},
+    {"id": "lien_thong", "label": "Liên thông"},
+    {"id": "vlvh", "label": "Vừa làm vừa học"}
+  ]}
+]}
+```</code></pre>
+        <ul>
+          <li><code>fields</code> <strong>luôn là mảng</strong>, kể cả khi chỉ có một field.</li>
+          <li><code>options.id</code> copy nguyên văn nhãn nhánh trong <code>&lt;academic_context&gt;</code> — không
+            có registry nào để tra, và bịa thêm nhánh văn bản không có là lỗi nội dung.</li>
+          <li><code>options: null</code> cho thuộc tính không có tập giá trị hữu hạn (điểm rèn luyện, số tín chỉ)
+            → UI render ô nhập tự do.</li>
+          <li>Thuộc tính <strong>độc lập</strong> gom hết vào một form; thuộc tính <strong>lồng nhau</strong>
+            (<code>loai_hinh_clc</code> chỉ tồn tại khi <code>he_dao_tao = chinh_quy_clc</code>) phải tách sang lượt sau.</li>
+          <li><code>sub_query_id</code> chỉ xuất hiện ở luồng MULTI, đánh dấu sub-query nào còn treo.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 07 -->
+    <section class="step">
+      <div class="marker">07</div>
+      <div class="step-body">
+        <p class="eyebrow">Node 12 · post-processing, không gọi LLM</p>
+        <h2>Đọc ngược output thành state</h2>
+        <p>
+          Bước deterministic chạy ngay sau khi node 12 nhận response thô: trích khối <code>json</code> cuối cùng,
+          parse, dựng lại <code>PendingClarification</code>.
+        </p>
+        <pre><code>def collect_pending_clarification(raw_llm_response: str) -> PendingClarification | None:
+    json_block = extract_trailing_json_block(raw_llm_response)
+    if json_block is None:
+        return None                      # trả lời trọn vẹn → xoá pending cũ
+    parsed = json.loads(json_block)
+    if parsed.get("type") != "ask_user_form":
+        return None
+
+    fields = parsed["fields"]
+    missing_fields = [f["field"] for f in fields]
+    options = [[o["id"] for o in f["options"]] if f.get("options") else None
+               for f in fields]
+
+    return PendingClarification(
+        origin_node="QueryTransformationNode",           # gán cứng, không do LLM quyết
+        pending_sub_query_id=parsed.get("sub_query_id"), # None nếu luồng SINGLE
+        missing_fields=missing_fields,
+        options=options,
+        retry_count=(
+            state.pending_clarification.retry_count
+            if state.pending_clarification
+            and set(state.pending_clarification.missing_fields) & set(missing_fields)
+            else 0
+        ),
+    )</code></pre>
+        <div class="note verified">
+          <p class="note-title">Điểm phát hiện ≠ điểm quay lại</p>
+          <p>
+            Field lộ ra ở node 12, nhưng <code>origin_node</code> phải là <code>QueryTransformationNode</code> (06).
+            Quay thẳng về node 12 thì LLM vẫn chỉ thấy đúng <code>filtered_context_chunks</code> cũ — đã rerank cho
+            câu hỏi <em>chưa</em> có thuộc tính bổ sung. Phải về node 06 để ghép thuộc tính mới vào query rồi chạy
+            lại 06 → 10 → 11 → 12. Type A không có vấn đề này vì hai điểm trùng nhau.
+          </p>
+        </div>
+        <p class="caption">
+          <code>retry_count</code> giữ nguyên khi bộ field mới <strong>giao</strong> với bộ đã hỏi lượt trước — dùng
+          giao chứ không phải bằng, vì lượt sau thường chỉ hỏi lại phần người dùng bỏ trống, bộ nhỏ hơn nhưng vẫn là
+          cùng một lần hỏi chưa xong. Việc <em>tăng</em> nó xảy ra ở node 02, không phải ở đây.
+        </p>
+      </div>
+    </section>
+
+    <div class="divider"><span class="divider-label">Lượt 2 — sinh viên trả lời</span></div>
+
+    <!-- ─────────────────────────────────────────────── 08 -->
+    <section class="step" data-lane="turn2">
+      <div class="marker">08</div>
+      <div class="step-body">
+        <p class="eyebrow">Node 02 · Clarification Guard</p>
+        <h2>Chặn câu trả lời ngắn trước khi nó bị phân loại nhầm</h2>
+        <p>
+          Sinh viên gõ <em>"Chính quy ạ"</em>. Nếu chuỗi này đi vào <code>MessageClassificationNode</code>, nó là câu
+          ngắn không chứa câu hỏi → bị phân loại <code>social_chat</code> → trả template xã giao và vứt sạch ngữ cảnh
+          câu hỏi gốc. Guard tồn tại để chặn đúng chỗ đó.
+        </p>
+        <pre class="declared"><code>MAX_CLARIFICATION_RETRY = 2      # số lần hỏi lại tối đa cho CÙNG một bộ field
+
+def route(state) -> str:
+    pending = state.pending_clarification
+    if pending is None:
+        return "MessageClassificationNode"
+
+    resolved, unresolved = resolve_form(state, pending)
+    state.confirmed_metadata.update(resolved)
+
+    if not unresolved:                       # điền đủ mọi field
+        state.pending_clarification = None
+        return pending.origin_node
+
+    if pending.retry_count < MAX_CLARIFICATION_RETRY:
+        pending.retry_count += 1
+        _keep_only(pending, unresolved)      # chỉ giữ lại phần còn thiếu
+        return pending.origin_node
+
+    state.pending_clarification = None       # hết lượt thử → dọn state, tránh kẹt
+    return "MessageClassificationNode"</code></pre>
+        <h3>Map câu trả lời là deterministic, không tốn thêm một lần gọi LLM</h3>
+        <p>
+          Bấm chip trên UI thì khớp chính xác <code>option.id</code>; gõ tay thì khớp sau khi bỏ dấu. Nhưng
+          <code>_match_free_text</code> chỉ chạy khi form có <strong>đúng một field</strong> — với form nhiều field
+          không có cách deterministic nào gán một câu văn xuôi vào đúng ô, nên form nhiều field bắt buộc render
+          nút Gửi.
+        </p>
+        <div class="note declared">
+          <p class="note-title">Điền một phần vẫn được giữ</p>
+          <p>
+            Bỏ trống 1 trong 4 ô thì 3 giá trị đã điền vẫn vào <code>confirmed_metadata</code> ngay, và
+            <code>_keep_only()</code> thu form lại chỉ còn ô còn thiếu. Vứt cả form vì thiếu một ô là cách nhanh nhất
+            để mất người dùng.
+          </p>
+        </div>
+        <p class="caption">
+          Guard là <strong>single-writer</strong> của <code>confirmed_metadata</code>. Node 12 phát hiện field thiếu
+          và hỏi, nhưng không bao giờ tự ghi giá trị — nó không có câu trả lời, câu trả lời đến ở lượt sau.
+          Guard cũng đặt <em>sau</em> khi JWT đã giải mã: mọi lượt, kể cả lượt trả lời bổ sung, đều phải mang bối cảnh
+          phân quyền hợp lệ.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 09 -->
+    <section class="step" data-lane="turn2">
+      <div class="marker">09</div>
+      <div class="step-body">
+        <p class="eyebrow">Prompt Loader · lượt 2 trở đi</p>
+        <h2>Field còn treo được nạp ngược vào prompt</h2>
+        <p>
+          Đây là chiều ngược lại của bước 07. Hai nhánh state cho ra hai prompt khác hẳn nhau:
+        </p>
+        <h3>Nhánh A — điền đủ</h3>
+        <p>
+          Guard đã chuyển hết giá trị sang <code>confirmed_metadata</code> và xoá
+          <code>pending_clarification = None</code>. Khối <code>&lt;missing_metadata_to_confirm&gt;</code> quay về
+          <strong>"Không có"</strong>, còn thuộc tính vừa chốt xuất hiện ở khối metadata:
+        </p>
+        <pre class="declared"><code>&lt;student_declared_attributes&gt;
+    - he_dao_tao: chinh_quy
+&lt;/student_declared_attributes&gt;</code></pre>
+        <h3>Nhánh B — còn ô bỏ trống</h3>
+        <p>
+          <code>pending_clarification</code> vẫn còn (đã được <code>_keep_only</code> lược bớt phần đã điền), nên
+          loader serialize nó thành JSON và bơm vào đúng placeholder:
+        </p>
+        <pre class="declared"><code>&lt;missing_metadata_to_confirm&gt;
+{"type": "ask_user_form", "fields": [
+  {"field": "he_dao_tao", "options": [
+    {"id": "chinh_quy", "label": "chinh_quy"},
+    {"id": "lien_thong", "label": "lien_thong"},
+    {"id": "vlvh", "label": "vlvh"}
+  ]}
+]}
+&lt;/missing_metadata_to_confirm&gt;</code></pre>
+        <div class="note declared">
+          <p class="note-title">Vì sao phải nạp lại thay vì để LLM tự phát hiện lần nữa</p>
+          <p>
+            Nếu để trống, LLM sẽ tự đặt tên field mới ở lượt này — <code>hinh_thuc_dao_tao</code> thay vì
+            <code>he_dao_tao</code> chẳng hạn. Tên mới làm <strong>mất liên kết <code>id</code> với form đã hiển thị</strong>
+            và đồng thời <strong>reset bộ đếm hỏi lại</strong> (vì phép giao ở bước 07 ra rỗng) — người dùng kẹt trong
+            vòng hỏi không bao giờ kết thúc. Vì vậy <code>task_2.yaml</code> quy định nguồn 1 được ưu tiên tuyệt đối:
+            copy nguyên văn <code>field</code> và <code>options</code>, chỉ được diễn đạt lại câu hỏi cho tự nhiên hơn.
+          </p>
+        </div>
+        <p class="caption">
+          Khối này <strong>không chứa định nghĩa</strong> của field — <code>PendingClarification</code> đã bỏ hẳn
+          trường <code>field_definition</code>. Định nghĩa chỉ tồn tại ở đúng một nơi: nhãn nhánh trong chính văn bản
+          quy chế, mà LLM đọc lại được ở <code>&lt;academic_context&gt;</code>. Nhân bản nó vào state chỉ tạo nguồn sự
+          thật thứ hai, lệch ngay khi retrieval trả về văn bản khác.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 10 -->
+    <section class="step" data-lane="turn2">
+      <div class="marker">10</div>
+      <div class="step-body">
+        <p class="eyebrow">Node 06 → 10 → 11 → 12 (chạy lại)</p>
+        <h2>Truy xuất lại, rồi tự phát hiện lại từ đầu</h2>
+        <p>
+          Node 06 ghép thuộc tính vừa chốt vào câu hỏi và sinh lại HyDE doc chính xác hơn:
+        </p>
+        <pre><code>"Theo Quy chế Giáo dục Quốc phòng và An ninh áp dụng cho sinh viên hệ chính quy,
+sinh viên năm cuối được xét miễn học phần nếu đã hoàn thành..."</code></pre>
+        <p>
+          Retrieval mới → rerank mới → node 12 đối chiếu lại <strong>từ đầu</strong>. Lần này không còn nhánh nào phụ
+          thuộc thuộc tính chưa biết, nên nó trả lời thẳng kèm citation và không sinh JSON — parser thấy response
+          không có <code>ask_user_form</code> và xoá <code>pending_clarification</code> về <code>None</code>.
+        </p>
+        <div class="note">
+          <p class="note-title">Không có hàng đợi field chưa hỏi</p>
+          <p>
+            Hệ thống cố tình <em>không</em> lưu danh sách thuộc tính "để hỏi sau". Sau khi chốt field thứ nhất,
+            <code>&lt;academic_context&gt;</code> ở lượt sau là tập văn bản <strong>khác</strong>, và thuộc tính thứ hai
+            định lưu sẵn có thể đã không còn liên quan. Một mảng như vậy là cache của suy luận đã hết hiệu lực —
+            không chỉ thừa mà sai. Vòng lặp tự sửa: hỏi → chốt → retrieval mới → phát hiện lại nếu vẫn còn thiếu.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 11 -->
+    <section class="step" data-lane="turn2">
+      <div class="marker">11</div>
+      <div class="step-body">
+        <p class="eyebrow">Đường thoát</p>
+        <h2>Khi sinh viên không trả lời được, hệ thống vẫn phải trả lời</h2>
+        <p>
+          <code>MAX_CLARIFICATION_RETRY</code> chặn đúng một tình huống bệnh lý: hỏi mãi cùng một field vì câu trả lời
+          không khớp option nào. Chạm ngưỡng thì guard dọn state và thả về luồng thường:
+        </p>
+        <pre><code>retry_count = 2                  # chạm MAX_CLARIFICATION_RETRY
+pending_clarification = None     # dọn state, tránh kẹt vòng lặp
+→ MessageClassificationNode → QueryTransformationNode (không có he_dao_tao)
+→ Node 12 buộc chọn cách an toàn: nêu đủ cả 3 nhánh kèm điều kiện
+  (rule phân nhánh trong task_1.yaml), thay vì đoán một nhánh</code></pre>
+        <p>
+          Ngược lại, <strong>không có trần cho tổng số field được hỏi trong một phiên</strong>. Hỏi một field
+          <em>mới</em> là hành vi đúng, và số lượng đã tự bị chặn: field chốt xong nằm lại trong
+          <code>confirmed_metadata</code> và không bao giờ được hỏi lần hai. Một ngân sách cứng chỉ khiến câu hỏi
+          chính đáng thứ N bị trả lời hớ hênh vì hết quota — thứ nên làm là <strong>đo</strong>: field nào bị hỏi lặp
+          bất thường là tín hiệu nên gắn metadata tốt hơn ở tầng index, hoặc đưa thuộc tính đó vào JWT.
+        </p>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ─────────────────────────────────────────────── Kết -->
+  <section class="closer">
+    <h2 style="margin:0">Các bất biến phải giữ khi triển khai</h2>
+    <div class="invariants">
+      <div class="inv"><b>SEC</b><span><code>confirmed_metadata</code> <strong>không bao giờ</strong> đi vào Qdrant payload filter ở node 10. Khai "em là học viên cao học" vẫn chỉ đọc được tài liệu trong quyền của JWT.</span></div>
+      <div class="inv"><b>STATE</b><span><code>len(options) == len(missing_fields)</code> — hai mảng song song; <code>options[i] = None</code> nghĩa là ô nhập tự do.</span></div>
+      <div class="inv"><b>WRITE</b><span>Chỉ Clarification Guard (node 02) được ghi <code>confirmed_metadata</code>. Ghi rời rạc từ nhiều nơi sẽ khiến giá trị bị đè bằng <code>None</code> khi một node skip hoặc fail.</span></div>
+      <div class="inv"><b>RESUME</b><span><code>origin_node</code> luôn là <code>QueryTransformationNode</code> với Type B — gán cứng ở orchestrator, không để LLM quyết.</span></div>
+      <div class="inv"><b>NAME</b><span>Field đã hỏi thì tên và tập <code>options</code> bất biến qua các lượt retry. Đổi tên = mất liên kết form + reset <code>retry_count</code>.</span></div>
+      <div class="inv"><b>PROFILE</b><span>Field nào suy ra được từ <code>organization_scopes</code> hoặc có sẵn trong JWT thì gán ngầm, không đưa vào diện hỏi lại.</span></div>
+    </div>
+    <p class="colophon">
+      Tổng hợp từ <code>missing_metadata_clarification_design.md</code>, <code>nodes/02</code>, <code>nodes/12</code>,
+      <code>detail_prompt_template_loader.md</code> và bộ <code>prompt_template/common/</code>
+      (<code>task_1.yaml</code>, <code>task_2.yaml</code>, <code>ask_user_form_guide.yaml</code>,
+      <code>academic_metadata.yaml</code>). Ví dụ GDQP dùng xuyên suốt trang này thực chất có 3 nhánh cùng một tiêu chí
+      "được miễn hay không", nên theo tiêu chí ở bước 05 nó thuộc CÁCH 1 — ở đây nó được giữ nguyên vì là ví dụ
+      quen thuộc nhất để lần theo đường đi, không phải vì nó là ca hỏi lại điển hình.
+    </p>
+  </section>
+
+</div>
